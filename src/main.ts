@@ -1,4 +1,5 @@
 import './assets/main.css'
+import 'vis-timeline/styles/vis-timeline-graph2d.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
