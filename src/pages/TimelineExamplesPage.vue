@@ -11,6 +11,7 @@ import BackgroundAreasExample from '@/domains/timeline/examples/items/Background
 import HtmlContentsExample from '@/domains/timeline/examples/items/HtmlContentsExample.vue'
 import TooltipExample from '@/domains/timeline/examples/items/TooltipExample.vue'
 import GroupsExample from '@/domains/timeline/examples/groups/GroupsExample.vue'
+import ApiProjectExample from '@/domains/timeline/examples/api/ApiProjectExample.vue'
 
 interface Example {
   id: string
@@ -101,14 +102,22 @@ const examples: Example[] = [
     description: '그룹으로 아이템 정렬',
     component: GroupsExample,
   },
+  // API Integration
+  {
+    id: 'apiProject',
+    category: 'Advanced',
+    name: 'API Project Management',
+    description: 'API 데이터로 프로젝트 관리 시스템',
+    component: ApiProjectExample,
+  },
 ]
 
 const selectedExample = ref<Example>(examples[0])
 
-const categories = Array.from(new Set(examples.map(e => e.category)))
+const categories = Array.from(new Set(examples.map((e) => e.category)))
 
 const getExamplesByCategory = (category: string) => {
-  return examples.filter(e => e.category === category)
+  return examples.filter((e) => e.category === category)
 }
 </script>
 

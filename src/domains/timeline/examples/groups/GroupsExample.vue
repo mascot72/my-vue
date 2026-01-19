@@ -27,6 +27,7 @@ const groups = [
 onMounted(() => {
   if (timelineEl.value) {
     const timeline = useTimeline(timelineEl.value, items)
+    timeline.setGroups(groups)
     // Groups를 설정 (vis-timeline에서 지원하는 경우)
     // setGroups 메서드가 있으면 호출
   }
@@ -35,8 +36,10 @@ onMounted(() => {
 
 <template>
   <div class="groups-example">
-    <p class="description">Items are organized by groups (teams/resources). Each group has its own row.</p>
-    <div ref="timelineEl" style="width: 100%; height: 100%;"></div>
+    <p class="description">
+      Items are organized by groups (teams/resources). Each group has its own row.
+    </p>
+    <div ref="timelineEl" style="width: 100%; height: 100%"></div>
   </div>
 </template>
 

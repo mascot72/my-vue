@@ -16,7 +16,7 @@ const items = [
 onMounted(() => {
   if (timelineEl.value) {
     timeline = useTimeline(timelineEl.value, items)
-    selectionButtons.value = items.map(item => ({
+    selectionButtons.value = items.map((item) => ({
       id: String(item.id),
       content: item.content,
     }))
