@@ -1,15 +1,44 @@
 <template>
   <div class="about">
-    <h1>This is an about page</h1>
+    <div class="about-content">
+      <h1>This is an about page</h1>
+      <p>Welcome to the Vue Timeline Application</p>
+    </div>
   </div>
 </template>
 
-<style>
-@media (min-width: 1024px) {
+<style scoped>
+.about {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.about-content {
+  text-align: center;
+}
+
+.about-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.about-content p {
+  font-size: 1.125rem;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
   .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
+    padding: 1rem;
+  }
+
+  .about-content h1 {
+    font-size: 1.875rem;
   }
 }
 </style>
