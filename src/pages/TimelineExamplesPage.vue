@@ -148,16 +148,18 @@ const getExamplesByCategory = (category: string) => {
     </aside>
 
     <!-- 우측 콘텐츠 -->
-    <main class="content">
-      <div class="content-header">
-        <h1>{{ selectedExample.name }}</h1>
-        <p class="description">{{ selectedExample.description }}</p>
-      </div>
+    <div>
+      <main class="content">
+        <div class="content-header">
+          <h1>{{ selectedExample.name }}</h1>
+          <p class="description">{{ selectedExample.description }}</p>
+        </div>
 
-      <div class="content-body">
-        <component :is="selectedExample.component" />
-      </div>
-    </main>
+        <div class="content-body">
+          <component :is="selectedExample.component" />
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 

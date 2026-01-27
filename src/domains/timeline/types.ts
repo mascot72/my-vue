@@ -32,6 +32,7 @@ export interface ProjectTask {
   endDate: string
   progress: number
   tags: string[]
+  type?: 'box' | 'range' | 'point'
   details: {
     objectives: string[]
     deliverables: string[]
