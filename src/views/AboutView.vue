@@ -1,9 +1,22 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useCounterStore } from '@/stores/counter';
+const counterStore = useCounterStore();
+const { count } = storeToRefs(counterStore);
+
+const dCount = computed(() => counterStore.doubleCount)
+
+</script>
+
 <template>
   <div class="about">
     <div class="about-content">
       <h1>This is an about page</h1>
       <p>Welcome to the Vue Timeline Application</p>
     </div>
+    {{ count }} , double: {{ dCount }}
+    <button @click="counterStore.increment">Increment Count</button>
   </div>
 </template>
 

@@ -39,7 +39,9 @@ onMounted(() => {
     <p class="description">
       Items are organized by groups (teams/resources). Each group has its own row.
     </p>
-    <div ref="timelineEl" style="width: 100%; height: 100%"></div>
+    <div ref="timelineEl" style="width: 100%; height: 100%">
+      <img src="@/assets/images/image.png" width="100px" alt="Groups Example" />
+    </div>
   </div>
 </template>
 
