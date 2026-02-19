@@ -10,6 +10,8 @@ export interface ItemCard {
   status: 'active' | 'pending' | 'completed' | 'archived'
   priority: 'low' | 'medium' | 'high' | 'critical'
   tags: string[]
+  start: string  // Timeline 시작 날짜
+  end: string    // Timeline 종료 날짜
   createdAt: string
   updatedAt: string
   metadata: Record<string, any>

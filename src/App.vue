@@ -33,6 +33,7 @@ import { RouterLink, RouterView } from 'vue-router'
   flex-direction: column;
   height: 100vh;
   width: 100%;
+  min-width: 0;
 }
 
 header {
@@ -50,8 +51,8 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 100%;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   padding: 0.75rem 1.5rem;
   height: 60px;
 }
@@ -100,5 +101,6 @@ nav a.router-link-exact-active {
   flex: 1;
   overflow: auto;
   width: 100%;
+  min-width: 0;
 }
 </style>
