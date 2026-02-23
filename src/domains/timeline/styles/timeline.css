@@ -265,3 +265,57 @@
   border-radius: 0.5rem;
   overflow: hidden;
 }
+
+/* 그룹 레이블 스타일 */
+.timeline-group-label {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0.5rem;
+}
+
+.group-label-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* depth/level에 따른 스타일 */
+.group-label-text[data-level="1"] {
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.9375rem;
+}
+
+.group-label-text[data-level="2"] {
+  font-weight: 600;
+  color: #1f2937;
+  padding-left: 0.5rem;
+}
+
+.group-label-text[data-level="3"] {
+  font-weight: 500;
+  color: #374151;
+  padding-left: 1rem;
+  font-size: 0.8125rem;
+}
+
+.group-label-text[data-level="4"] {
+  font-weight: 500;
+  color: #4b5563;
+  padding-left: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+/* 그룹 라인 스타일 */
+.vis-timeline .vis-labelset .vis-label {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.vis-timeline .vis-labelset .vis-label:hover {
+  background: #f9fafb;
+}

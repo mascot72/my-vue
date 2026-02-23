@@ -75,7 +75,9 @@ src/domains/timeline/
 ### 핵심 라이브러리
 - **vis-timeline**: 타임라인 시각화 라이브러리
   - Template 함수로 HTML 카드 렌더링
+  - GroupTemplate 함수로 그룹 레이블 커스터마이징
   - 시간 기반 아이템 배치
+  - 그룹별 아이템 분류 및 표시
   - 이벤트 핸들링 (itemover, itemout)
 - **Vue 3**: Composition API 사용
 - **TypeScript**: 타입 안전성
@@ -99,6 +101,44 @@ src/domains/timeline/
 4. 마우스를 떼면 팝업 자동 숨김
 5. Ctrl + 마우스 휠로 줌 인/아웃 가능
 6. 드래그로 타임라인 이동 가능
+
+### 4. TimelineView 컴포넌트 사용
+```vue
+<template>
+  <TimelineView 
+    :items="timelineItems" 
+    :groups="timelineGroups"
+    @item-hover="handleItemHover" 
+  />
+</template>
+
+<script setup lang="ts">
+// Groups 데이터 형식
+const timelineGroups = [
+  { 
+    id: 'group1', 
+    content: '<div class="group-label-text" data-level="1">Level 1 Group</div>',
+    level: 1 
+  },
+  { 
+    id: 'group2', 
+    content: 'Level 2 Group',
+    level: 2 
+  }
+]
+
+// Items 데이터에 group 속성 추가
+const timelineItems = [
+  {
+    id: 1,
+    group: 'group1',  // 그룹 ID 지정
+    start: '2026-02-01',
+    end: '2026-02-10',
+    content: '<div class="timeline-card">...</div>'
+  }
+]
+</script>
+```
 
 ## API 구조
 
@@ -178,8 +218,12 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
     minorLabels: { week: 'w주' },
     majorLabels: { month: 'YYYY년 M월' }
   },
-  template: (item) => {     // HTML 렌더링
+  template: (item) => {     // 아이템 HTML 렌더링
     // ItemCard HTML을 DOM 요소로 변환
+  },
+  groupTemplate: (group) => {  // 그룹 레이블 HTML 렌더링
+    // Tree 노드를 그룹 레이블로 변환
+    // level/depth에 따라 스타일 차별화
   }
 }
 ```
@@ -207,6 +251,21 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 </div>
 ```
 
+### Timeline 그룹 레이블 구조
+```html
+<div class="timeline-group-label">
+  <div class="group-label-text" data-level="1">
+    그룹 이름
+  </div>
+</div>
+```
+
+**그룹 레이블 스타일링**:
+- **Level 1**: 굵은 폰트 (700), 큰 사이즈, 진한 색상
+- **Level 2**: 중간 굵기 (600), 0.5rem 왼쪽 패딩
+- **Level 3**: 일반 굵기 (500), 1rem 왼쪽 패딩, 작은 폰트
+- **Level 4**: 일반 굵기 (500), 1.5rem 왼쪽 패딩, 작은 폰트
+
 ## 레이아웃 최적화
 
 ### 전체 화면 활용
@@ -220,31 +279,52 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 - **Timeline View**: 나머지 영역 전체 사용 (`1fr`)
 - **Scroll**: 각 영역 독립적으로 스크롤 가능
 
-## 최근 업데이트 (2026-02-19)
+## 최근 업데이트
 
-### 1. vis-timeline 통합
+### 2026-02-23: groupTemplate 기능 추가
+
+#### 1. vis-timeline 그룹 렌더링
+- **groupTemplate 함수 구현**: Tree 노드를 Timeline 그룹 레이블로 렌더링
+- **HTML 기반 렌더링**: content 속성이 있으면 HTML로 파싱하여 표시
+- **Depth별 스타일링**: data-level 속성으로 계층 구조 시각화
+- **useTimeline.ts 개선**: groups 파라미터 추가 (옵셔널)
+
+#### 2. TimelineView 컴포넌트 개선
+- **groups prop 추가**: TimelineGroup[] 타입 지원
+- **groups watch 추가**: 그룹 데이터 변경 시 자동 업데이트
+- **변수명 충돌 해결**: properties → eventProps로 변경
+
+#### 3. 그룹 레이블 스타일
+- **depth별 차별화**: level 1~4에 따라 폰트 크기, 굵기, 패딩 조정
+- **시각적 계층**: 왼쪽 패딩으로 들여쓰기 효과
+- **hover 효과**: 그룹 레이블에 마우스 오버 시 배경색 변경
+- **timeline.css 추가**: `.timeline-group-label`, `.group-label-text` 스타일
+
+### 2026-02-19: vis-timeline 통합
+
+#### 1. vis-timeline 통합
 - ItemsGrid와 ItemCard 컴포넌트 제거
 - vis-timeline 기반 TimelineView로 대체
 - template 함수로 HTML 카드 렌더링 구현
 
-### 2. 카드 디자인
+#### 2. 카드 디자인
 - 120px 높이의 컴팩트한 카드
 - 썸네일 이미지 (120x120px)
 - 상태/우선순위 배지
 - 태그 표시 (최대 3개)
 - 날짜 범위 표시
 
-### 3. 마우스 오버 팝업
+#### 3. 마우스 오버 팝업
 - TimelineView에서 itemover/itemout 이벤트 처리
 - LayerPopup 컴포넌트 연동
 - 상세 정보 표시
 
-### 4. 레이아웃 개선
+#### 4. 레이아웃 개선
 - 전체 화면 너비 활용
 - min-width: 0으로 Grid 레이아웃 최적화
 - Groups Tree 너비 축소 (320px → 280px)
 
-### 5. 파일 정리
+#### 5. 파일 정리
 - ItemCard.vue 삭제
 - ItemsGrid.vue 삭제
 - timeline.css에 모든 스타일 통합
@@ -259,5 +339,7 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 6. **캐싱**: API 응답 캐싱으로 성능 개선
 7. **에러 처리**: 더 세밀한 에러 핸들링
 8. **접근성**: 키보드 네비게이션, ARIA 속성 추가
-9. **그룹별 표시**: Timeline에 그룹 레인 추가
+9. **그룹 확장/축소**: Timeline 그룹을 펼치고 접을 수 있는 기능
 10. **커스텀 시간 범위**: 사용자가 시간 범위 설정 가능
+11. **드래그 앤 드롭**: 아이템을 다른 그룹으로 이동
+12. **아이템 편집**: 인라인 편집 또는 모달 편집 기능

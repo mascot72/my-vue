@@ -2,13 +2,13 @@ import { Timeline } from 'vis-timeline'
 import type { TimelineItem } from '../types'
 import type { TimelineGroup } from 'vis-timeline'
 
-export function useTimeline(el: HTMLElement, items: TimelineItem[]) {
+export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: TimelineGroup[]) {
   // 현재 날짜 기준 6개월 범위 설정
   const now = new Date()
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
   const sixMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate())
   
-  const timeline = new Timeline(el, items, {
+  const options = {
     stack: true,
     zoomKey: 'ctrlKey',
     start: sixMonthsAgo,
@@ -16,12 +16,12 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[]) {
     min: new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()),
     max: new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()),
     // 시간축 설정
-    orientation: 'top',
+    orientation: 'top' as const,
     showCurrentTime: true,
     showMajorLabels: true,
     showMinorLabels: true,
     // 격자 설정
-    timeAxis: { scale: 'week', step: 1 },
+    timeAxis: { scale: 'week' as const, step: 1 },
     format: {
       minorLabels: {
         week: 'w주',
@@ -46,7 +46,35 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[]) {
       div.innerHTML = item.content
       return (div.firstElementChild as HTMLElement) || div
     },
-  })
+    // 그룹 템플릿 렌더링
+    groupTemplate: (group: any) => {
+      const div = document.createElement('div')
+      div.className = 'timeline-group-label'
+      
+      // 그룹에 content가 있으면 HTML로 렌더링
+      if (group.content) {
+        div.innerHTML = group.content
+        return (div.firstElementChild as HTMLElement) || div
+      }
+      
+      // 기본 텍스트 렌더링
+      const label = document.createElement('div')
+      label.className = 'group-label-text'
+      label.textContent = group.content || group.title || String(group.id)
+      
+      // depth/level에 따른 스타일 적용
+      if (group.level !== undefined) {
+        label.setAttribute('data-level', String(group.level))
+      }
+      
+      div.appendChild(label)
+      return div
+    },
+  } as const
+  
+  const timeline = groups 
+    ? new Timeline(el, items, groups, options)
+    : new Timeline(el, items, options)
 
   return {
     // 아이템 관리
