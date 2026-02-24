@@ -6,15 +6,24 @@ Enhanced Timeline은 왼쪽에 Tree 형태의 Groups 구조와 오른쪽에 vis-
 
 ## 주요 기능
 
-### 1. Groups Tree (왼쪽 영역)
+### 1. Groups Tree (왼쪽 영역 - 선택적)
 - **4-depth Tree 구조**: 최대 4단계까지의 계층적 그룹 구조
 - **모든 depth에서 leaf 노드 가능**: 각 depth 레벨에서 아이템을 가질 수 있음
 - **동적 로딩**: 각 노드 클릭 시 자식 노드를 비동기로 로드
 - **펼치기/접기**: 노드를 클릭하여 하위 구조 표시/숨김
 - **리프 노드 선택**: 최하위 노드 선택 시 오른쪽에 관련 Items 표시
 - **로딩 애니메이션**: 데이터 fetch 중 로딩 인디케이터 표시
+- **UI 모드 전환**: `showGroupsTree` prop으로 사이드바 모드와 통합 모드 전환 가능
 
 ### 2. Timeline View (오른쪽 영역) - vis-timeline 기반
+- **그룹 기반 레이아웃**: Tree 구조가 Timeline 그룹으로 표시됨
+- **통합 그룹 표시**: GroupsTree UI 스타일의 그룹 레이블을 Timeline에 직접 표시
+- **그룹 펼침/접기**: 그룹 라벨 클릭으로 하위 그룹과 아이템 표시/숨김
+- **계층 구조 유지**: Depth-first 순서로 그룹이 정렬되어 트리 구조 유지
+- **아이콘 표시**: 
+  - 📁 접힌 폴더
+  - 📂 펼쳐진 폴더
+  - 📄 리프 노드 (자식 없음)
 - **시간축 표시**: 6개월 범위 (현재 기준 ±3개월)
 - **주간 격자**: 매주 단위로 격자선 표시
 - **시간 레이블**: 년/월/주 레이블 표시
@@ -26,6 +35,8 @@ Enhanced Timeline은 왼쪽에 Tree 형태의 Groups 구조와 오른쪽에 vis-
   - 태그 (최대 3개)
   - 날짜 범위 표시
 - **시간 기반 배치**: start/end 날짜에 따라 타임라인에 자동 배치
+- **그룹별 아이템 분류**: 각 아이템이 해당 그룹 라인에 표시됨
+- **펼쳐진 그룹만 표시**: 접힌 그룹의 아이템은 숨김
 - **상태별 색상 구분**: 왼쪽 border로 상태 표시
 - **우선순위별 효과**: critical 우선순위는 shadow 효과
 
@@ -89,54 +100,86 @@ src/domains/timeline/
 - URL: `/timeline-enhanced`
 - 네비게이션 메뉴에서 "Enhanced" 클릭
 
-### 2. Groups 탐색
-1. 왼쪽 Tree에서 폴더 아이콘이 있는 노드 클릭
-2. 하위 노드가 펼쳐짐
-3. 리프 노드 클릭 시 오른쪽 Timeline View에 Items 표시
+### 2. UI 모드 선택
+**통합 모드 (기본값, showGroupsTree=false)**:
+- 전체 화면에 Timeline View 표시
+- 그룹이 Timeline 왼쪽 레이블로 표시됨
+- 그룹 레이블 클릭으로 펼침/접기
 
-### 3. Timeline Items 확인
+**사이드바 모드 (showGroupsTree=true)**:
+- 왼쪽에 Groups Tree 사이드바 (280px)
+- 오른쪽에 Timeline View
+- 기존 방식과 동일하게 동작
+
+### 3. Groups 탐색 및 펼침/접기
+1. Timeline에서 폴더 아이콘(📁/📂)이 있는 그룹 레이블 클릭
+2. 하위 그룹이 바로 아래에 순서대로 펼쳐짐
+3. 펼쳐진 그룹의 아이템만 해당 그룹 라인에 표시됨
+4. 다시 클릭하면 하위 그룹과 아이템이 숨겨짐
+
+### 4. Timeline Items 확인
 1. 오른쪽 Timeline View에서 시간축에 배치된 카드 확인
 2. 카드는 start/end 날짜에 따라 자동으로 배치됨
-3. 마우스를 카드 위로 올리면 상세 정보 팝업 표시
-4. 마우스를 떼면 팝업 자동 숨김
-5. Ctrl + 마우스 휠로 줌 인/아웃 가능
-6. 드래그로 타임라인 이동 가능
+3. 각 아이템은 해당 그룹과 **같은 라인**에 표시됨
+4. 마우스를 카드 위로 올리면 상세 정보 팝업 표시
+5. 마우스를 떼면 팝업 자동 숨김
+6. Ctrl + 마우스 휠로 줌 인/아웃 가능
+7. 드래그로 타임라인 이동 가능
 
-### 4. TimelineView 컴포넌트 사용
+### 5. TimelineEnhancedPage 컴포넌트 사용
+```vue
+<template>
+  <!-- 통합 모드 (기본) -->
+  <TimelineEnhancedPage />
+  
+  <!-- 또는 사이드바 모드 -->
+  <TimelineEnhancedPage :show-groups-tree="true" />
+</template>
+```
+### 6. TimelineView 컴포넌트 사용
 ```vue
 <template>
   <TimelineView 
     :items="timelineItems" 
     :groups="timelineGroups"
-    @item-hover="handleItemHover" 
+    @item-hover="handleItemHover"
+    @group-click="handleGroupClick"
   />
 </template>
 
 <script setup lang="ts">
-// Groups 데이터 형식
-const timelineGroups = [
-  { 
-    id: 'group1', 
-    content: '<div class="group-label-text" data-level="1">Level 1 Group</div>',
-    level: 1 
-  },
-  { 
-    id: 'group2', 
-    content: 'Level 2 Group',
-    level: 2 
-  }
-]
+import { useTreeStore } from '@/domains/timeline/store/tree.store'
+
+// Groups 데이터 형식 (GroupsTree UI 스타일)
+const timelineGroups = computed(() => {
+  const visibleNodes = getVisibleNodesInOrder()
+  return visibleNodes.map((node, index) => ({
+    id: node.id,
+    content: `<div class="timeline-group-label" data-level="${node.level}">
+      <span class="timeline-group-icon">${icon}</span>
+      <span class="timeline-group-name">${node.name}</span>
+    </div>`,
+    title: node.name,
+    level: node.level,
+    order: index  // 트리 순서 유지
+  }))
+})
 
 // Items 데이터에 group 속성 추가
 const timelineItems = [
   {
     id: 1,
-    group: 'group1',  // 그룹 ID 지정
+    group: '1-4',  // 그룹 ID 지정 (groupId와 매칭)
     start: '2026-02-01',
     end: '2026-02-10',
     content: '<div class="timeline-card">...</div>'
   }
 ]
+
+// 그룹 클릭 핸들러
+const handleGroupClick = async (groupId: string) => {
+  await treeStore.toggleNode(groupId)
+}
 </script>
 ```
 
@@ -158,6 +201,9 @@ fetchNodeById(nodeId: string): Promise<TreeNodeData | null>
 ```typescript
 // 특정 그룹의 아이템들 조회
 fetchItemsByGroupId(groupId: string): Promise<ItemCard[]>
+
+// 모든 그룹의 아이템들 일괄 조회 (groupId 포함)
+fetchAllItems(): Promise<ItemCard[]>
 
 // 특정 아이템 상세 정보 조회
 fetchItemById(itemId: string): Promise<ItemCard | null>
@@ -188,13 +234,14 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 ```typescript
 {
   // State
-  items: ItemCard[]  // start/end 날짜 포함
+  items: ItemCard[]  // start/end 날짜, groupId 포함
   selectedGroupId: string | null
   loading: boolean
   error: string | null
   
   // Actions
-  loadItems(groupId)
+  loadItems(groupId)      // 특정 그룹의 아이템만 로드
+  loadAllItems()          // 모든 그룹의 아이템 로드
   clearItems()
 }
 ```
@@ -206,6 +253,7 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 {
   stack: true,              // 아이템 겹침 방지
   zoomKey: 'ctrlKey',       // Ctrl + 휠로 줌
+  groupOrder: 'order',      // 그룹 순서 속성 기준 정렬
   start: -3개월,            // 시작 시간
   end: +3개월,              // 종료 시간  
   orientation: 'top',       // 시간축 위쪽
@@ -224,6 +272,7 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
   groupTemplate: (group) => {  // 그룹 레이블 HTML 렌더링
     // Tree 노드를 그룹 레이블로 변환
     // level/depth에 따라 스타일 차별화
+    // HTML content를 DOM 요소로 파싱
   }
 }
 ```
@@ -253,18 +302,20 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 
 ### Timeline 그룹 레이블 구조
 ```html
-<div class="timeline-group-label">
-  <div class="group-label-text" data-level="1">
-    그룹 이름
-  </div>
+<div class="timeline-group-label" data-level="1">
+  <span class="timeline-group-icon">📂</span>
+  <span class="timeline-group-name">그룹 이름</span>
 </div>
 ```
 
-**그룹 레이블 스타일링**:
-- **Level 1**: 굵은 폰트 (700), 큰 사이즈, 진한 색상
-- **Level 2**: 중간 굵기 (600), 0.5rem 왼쪽 패딩
-- **Level 3**: 일반 굵기 (500), 1rem 왼쪽 패딩, 작은 폰트
-- **Level 4**: 일반 굵기 (500), 1.5rem 왼쪽 패딩, 작은 폰트
+**그룹 레이블 스타일링 (GroupsTree UI 스타일 적용)**:
+- **아이콘**: 📁 (접힌 폴더), 📂 (펼쳐진 폴더), 📄 (리프 노드)
+- **Level 1**: 굵은 폰트 (700), 큰 사이즈, 진한 색상, 0.75rem 패딩
+- **Level 2**: 중간 굵기 (600), 레벨 1 + 20px 왼쪽 패딩
+- **Level 3**: 일반 굵기 (500), 레벨 1 + 40px 왼쪽 패딩, 작은 폰트
+- **Level 4**: 일반 굵기 (500), 레벨 1 + 60px 왼쪽 패딩, 작은 폰트
+- **Hover 효과**: 배경색 #f3f4f6으로 변경
+- **클릭 가능**: cursor: pointer, 그룹 펼침/접기 동작
 
 ## 레이아웃 최적화
 
@@ -280,6 +331,41 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 - **Scroll**: 각 영역 독립적으로 스크롤 가능
 
 ## 최근 업데이트
+
+### 2026-02-24: 그룹 펼침/접기 및 통합 모드 구현
+
+#### 1. 그룹 펼침/접기 기능
+- **그룹 클릭 이벤트**: Timeline 그룹 레이블 클릭으로 하위 구조 표시/숨김
+- **계층 구조 유지**: Depth-first 순서로 그룹 정렬 (getVisibleNodesInOrder)
+- **동적 아이콘**: 접힌 폴더(📁), 펼쳐진 폴더(📂), 리프 노드(📄)
+- **아이템 필터링**: 펼쳐진 그룹의 아이템만 표시
+- **같은 라인 배치**: 각 아이템이 해당 그룹과 같은 라인에 표시
+- **그룹 순서 정렬**: groupOrder 옵션으로 트리 구조 순서 유지
+
+#### 2. GroupsTree UI 스타일 적용
+- **통합 레이블 디자인**: GroupsTree와 동일한 UI 스타일
+- **아이콘 표시**: 노드 타입별 아이콘 추가
+- **레벨별 인덴트**: 20px씩 증가하는 왼쪽 패딩
+- **Hover 효과**: 배경색 변경으로 상호작용 표시
+- **timeline.css 개선**: GroupsTree UI 스타일 반영
+
+#### 3. UI 모드 전환
+- **showGroupsTree prop**: 사이드바 모드와 통합 모드 전환
+- **기본값 false**: 통합 모드가 기본값
+- **레이아웃 조정**: with-sidebar 클래스로 그리드 레이아웃 전환
+- **독립적 동작**: 두 모드 모두 완전히 동작
+
+#### 4. 데이터 구조 개선
+- **ItemCard.groupId 추가**: 아이템과 그룹 연결
+- **fetchAllItems API**: 모든 그룹의 아이템 일괄 로드
+- **loadAllItems 액션**: items.store에 추가
+- **TimelineItem.group**: string | number 타입 지원
+- **order 속성**: TimelineGroup에 순서 인덱스 추가
+
+#### 5. 이벤트 처리
+- **groupClick 이벤트**: TimelineView에서 emit
+- **handleGroupClick**: treeStore.toggleNode 호출
+- **자동 업데이트**: computed로 reactive하게 그룹/아이템 갱신
 
 ### 2026-02-23: groupTemplate 기능 추가
 
@@ -331,6 +417,13 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 
 ## 개선 가능한 부분
 
+### 완료된 기능 ✅
+- ✅ **그룹 확장/축소**: Timeline 그룹을 펼치고 접을 수 있는 기능 (2026-02-24)
+- ✅ **그룹별 아이템 표시**: 펼쳐진 그룹의 아이템만 표시 (2026-02-24)
+- ✅ **GroupsTree UI 통합**: Timeline 그룹에 GroupsTree 스타일 적용 (2026-02-24)
+- ✅ **UI 모드 전환**: 사이드바 모드와 통합 모드 선택 가능 (2026-02-24)
+
+### 향후 개선 가능한 항목
 1. **실제 API 연동**: 현재는 Mock 데이터 사용
 2. **검색 기능**: Tree/Items 검색
 3. **필터링**: 상태, 우선순위, 날짜 범위로 필터링
@@ -339,7 +432,9 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 6. **캐싱**: API 응답 캐싱으로 성능 개선
 7. **에러 처리**: 더 세밀한 에러 핸들링
 8. **접근성**: 키보드 네비게이션, ARIA 속성 추가
-9. **그룹 확장/축소**: Timeline 그룹을 펼치고 접을 수 있는 기능
-10. **커스텀 시간 범위**: 사용자가 시간 범위 설정 가능
-11. **드래그 앤 드롭**: 아이템을 다른 그룹으로 이동
-12. **아이템 편집**: 인라인 편집 또는 모달 편집 기능
+9. **커스텀 시간 범위**: 사용자가 시간 범위 설정 가능
+10. **드래그 앤 드롭**: 아이템을 다른 그룹으로 이동
+11. **아이템 편집**: 인라인 편집 또는 모달 편집 기능
+12. **그룹 순서 변경**: 드래그로 그룹 순서 변경
+13. **즐겨찾기**: 자주 사용하는 그룹 북마크
+14. **다크 모드**: 다크 테마 지원
