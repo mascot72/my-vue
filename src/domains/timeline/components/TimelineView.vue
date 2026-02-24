@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   itemHover: [{ itemId: string | null; x: number; y: number }]
+  groupClick: [groupId: string]
 }>()
 
 const container = ref<HTMLDivElement | null>(null)
@@ -35,6 +36,15 @@ onMounted(() => {
   // 마우스 아웃 이벤트 리스너
   timelineApi.on('itemout', () => {
     emit('itemHover', { itemId: null, x: 0, y: 0 })
+  })
+
+  // 그룹 클릭 이벤트 리스너
+  timelineApi.on('click', (properties?: unknown) => {
+    const eventProps = properties as { what?: string; group?: string | number }
+    // 그룹 레이블 영역을 클릭한 경우
+    if (eventProps?.what === 'group-label' && eventProps?.group !== undefined) {
+      emit('groupClick', String(eventProps.group))
+    }
   })
 })
 

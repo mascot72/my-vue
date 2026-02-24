@@ -15,6 +15,8 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
     end: sixMonthsLater,
     min: new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()),
     max: new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()),
+    // 그룹 순서 설정 (order 속성 기준)
+    groupOrder: 'order' as const,
     // 시간축 설정
     orientation: 'top' as const,
     showCurrentTime: true,

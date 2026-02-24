@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ItemCard } from '../types/item.types'
-import { fetchItemsByGroupId, fetchItemById } from '../api/items.api'
+import { fetchItemsByGroupId, fetchItemById, fetchAllItems } from '../api/items.api'
 
 export const useItemsStore = defineStore('items', () => {
   // State
@@ -48,6 +48,23 @@ export const useItemsStore = defineStore('items', () => {
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load items'
       console.error('Error loading items:', err)
+      items.value = []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const loadAllItems = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const fetchedItems = await fetchAllItems()
+      items.value = fetchedItems
+      selectedGroupId.value = null // 모든 아이템 로드시 특정 그룹 선택 해제
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load all items'
+      console.error('Error loading all items:', err)
       items.value = []
     } finally {
       loading.value = false
@@ -115,6 +132,7 @@ export const useItemsStore = defineStore('items', () => {
     
     // Actions
     loadItems,
+    loadAllItems,
     loadItemDetail,
     showPopup,
     hidePopup,

@@ -4,6 +4,7 @@
 
 export interface ItemCard {
   id: string
+  groupId: string  // Timeline 그룹 ID (트리 노드 ID와 연결)
   title: string
   description: string
   imageUrl?: string

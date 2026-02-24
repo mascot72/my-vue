@@ -51,6 +51,7 @@ export function useItemsTimeline(items: Ref<ItemCard[]>) {
         </div>`,
         start: item.start,
         end: item.end,
+        group: item.groupId, // 그룹 ID 연결
         title: `${item.title}\n${item.description}`,
         className: `timeline-item-${item.status} priority-${item.priority}`,
         type: 'range',

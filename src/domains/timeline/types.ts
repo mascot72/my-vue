@@ -4,7 +4,7 @@ export interface TimelineItem {
   content: string
   start: string
   end?: string
-  group?: number
+  group?: number | string  // 그룹 ID (number 또는 string 모두 허용)
   title?: string
   type?: string
   className?: string

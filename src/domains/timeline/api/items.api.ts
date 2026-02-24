@@ -965,7 +965,27 @@ export const fetchItemsByGroupId = async (groupId: string): Promise<ItemCard[]> 
   return new Promise((resolve) => {
     setTimeout(() => {
       const items = mockItemsData[groupId] || []
-      resolve(items)
+      // groupId 추가
+      const itemsWithGroupId = items.map(item => ({ ...item, groupId }))
+      resolve(itemsWithGroupId)
+    }, 800)
+  })
+}
+
+/**
+ * 모든 그룹의 아이템들 조회
+ */
+export const fetchAllItems = async (): Promise<ItemCard[]> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const allItems: ItemCard[] = []
+      // 모든 그룹의 아이템을 합치면서 groupId 추가
+      Object.entries(mockItemsData).forEach(([groupId, items]) => {
+        items.forEach(item => {
+          allItems.push({ ...item, groupId })
+        })
+      })
+      resolve(allItems)
     }, 800)
   })
 }

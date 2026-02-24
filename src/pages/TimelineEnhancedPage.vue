@@ -1,18 +1,93 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import GroupsTree from '@/domains/timeline/components/tree/GroupsTree.vue'
 import TimelineView from '@/domains/timeline/components/TimelineView.vue'
 import LayerPopup from '@/domains/timeline/components/items/LayerPopup.vue'
 import { useItemsStore } from '@/domains/timeline/store/items.store'
+import { useTreeStore } from '@/domains/timeline/store/tree.store'
 import { useItemsTimeline } from '@/domains/timeline/composables/useItemsTimeline'
 import type { ItemCard } from '@/domains/timeline/types/item.types'
+import type { TreeNode } from '@/domains/timeline/types/tree.types'
+import type { TimelineGroup } from 'vis-timeline'
+
+// Props for switching between GroupsTree and Timeline Groups
+const props = withDefaults(
+  defineProps<{
+    showGroupsTree?: boolean
+  }>(),
+  {
+    showGroupsTree: false,
+  }
+)
 
 const itemsStore = useItemsStore()
 const { items } = storeToRefs(itemsStore)
 
-// items를 timeline items로 변환
-const { timelineItems } = useItemsTimeline(items)
+const treeStore = useTreeStore()
+const { nodes } = storeToRefs(treeStore)
+
+// 초기 로드
+onMounted(async () => {
+  await treeStore.loadRootNodes()
+  await itemsStore.loadAllItems()
+})
+
+// 표시되는 노드를 재귀적으로 수집 (루트 + 펼쳐진 노드의 자식들) - 트리 순서 유지
+const getVisibleNodesInOrder = (): TreeNode[] => {
+  const visibleNodes: TreeNode[] = []
+  
+  const collectVisible = (node: TreeNode) => {
+    visibleNodes.push(node)
+    
+    // 노드가 펼쳐져 있고 자식이 있으면 자식들도 순서대로 추가
+    if (node.isExpanded && node.children && node.children.length > 0) {
+      node.children.forEach((child: TreeNode) => collectVisible(child))
+    }
+  }
+  
+  // 루트 노드부터 시작 (순서대로)
+  Array.from(nodes.value.values())
+    .filter(node => node.level === 1)
+    .sort((a, b) => a.id.localeCompare(b.id)) // ID 순서대로 정렬
+    .forEach(rootNode => collectVisible(rootNode))
+  
+  return visibleNodes
+}
+
+// 표시되는 노드 ID 집합 (필터링용)
+const getVisibleNodeIds = (): Set<string> => {
+  return new Set(getVisibleNodesInOrder().map(node => node.id))
+}
+
+// tree nodes를 timeline groups로 변환 (트리 순서대로)
+const timelineGroups = computed<TimelineGroup[]>(() => {
+  const visibleNodes = getVisibleNodesInOrder()
+  
+  return visibleNodes.map((node, index) => {
+    // 노드 타입에 따른 아이콘
+    const icon = !node.hasChildren ? '📄' : (node.isExpanded ? '📂' : '📁')
+    
+    return {
+      id: node.id,
+      content: `<div class="timeline-group-label" data-level="${node.level}">
+        <span class="timeline-group-icon">${icon}</span>
+        <span class="timeline-group-name">${node.name}</span>
+      </div>`,
+      title: node.name,
+      level: node.level,
+      order: index // 트리 순서 유지
+    }
+  })
+})
+
+// items를 timeline items로 변환 (펼쳐진 그룹의 아이템만 표시)
+const visibleItems = computed(() => {
+  const visibleIds = getVisibleNodeIds()
+  return items.value.filter(item => visibleIds.has(item.groupId))
+})
+
+const { timelineItems } = useItemsTimeline(visibleItems)
 
 // 팝업 상태
 const popupVisible = ref(false)
@@ -24,7 +99,7 @@ const handleItemHover = (event: { itemId: string | null; x: number; y: number })
   if (event.itemId) {
     // itemId로 원본 아이템 찾기 (index 기반)
     const index = parseInt(event.itemId) - 1
-    const item = items.value[index]
+    const item = visibleItems.value[index]
     if (item) {
       popupItem.value = item
       popupPosition.value = { x: event.x, y: event.y }
@@ -35,6 +110,11 @@ const handleItemHover = (event: { itemId: string | null; x: number; y: number })
     popupItem.value = null
   }
 }
+
+// 그룹 클릭 이벤트 처리 (펼치기/접기)
+const handleGroupClick = async (groupId: string) => {
+  await treeStore.toggleNode(groupId)
+}
 </script>
 
 <template>
@@ -44,21 +124,26 @@ const handleItemHover = (event: { itemId: string | null; x: number; y: number })
       <p class="subtitle">Browse groups and explore items with interactive cards</p>
     </div>
 
-    <div class="page-content">
-      <!-- 왼쪽: Groups Tree -->
-      <aside class="groups-section">
+    <div class="page-content" :class="{ 'with-sidebar': props.showGroupsTree }">
+      <!-- 왼쪽: Groups Tree (선택적 표시) -->
+      <aside v-if="props.showGroupsTree" class="groups-section">
         <GroupsTree />
       </aside>
 
       <!-- 오른쪽: Timeline View (카드가 시간축에 배치) -->
-      <main class="items-section">
+      <main class="items-section" :class="{ 'full-width': !props.showGroupsTree }">
         <div class="timeline-wrapper">
           <div class="timeline-header">
             <h3>Items Timeline</h3>
             <p class="timeline-subtitle">Items displayed on timeline grid by date range</p>
           </div>
           <div class="timeline-container">
-            <TimelineView :items="timelineItems" @item-hover="handleItemHover" />
+            <TimelineView 
+              :items="timelineItems" 
+              :groups="timelineGroups"
+              @item-hover="handleItemHover"
+              @group-click="handleGroupClick"
+            />
           </div>
         </div>
       </main>
@@ -106,9 +191,14 @@ const handleItemHover = (event: { itemId: string | null; x: number; y: number })
 .page-content {
   flex: 1;
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 1fr;
   min-height: 0;
   gap: 0;
+}
+
+/* GroupsTree가 활성화되면 사용 */
+.page-content.with-sidebar {
+  grid-template-columns: 280px 1fr;
 }
 
 .groups-section {
@@ -123,6 +213,10 @@ const handleItemHover = (event: { itemId: string | null; x: number; y: number })
   min-width: 0;
   overflow-y: auto;
   overflow-x: auto;
+}
+
+.items-section.full-width {
+  grid-column: 1;
 }
 
 .timeline-wrapper {
