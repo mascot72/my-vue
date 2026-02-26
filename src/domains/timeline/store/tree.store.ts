@@ -124,6 +124,50 @@ export const useTreeStore = defineStore('tree', () => {
     return node?.children || []
   }
 
+  const expandAll = async () => {
+    // 모든 노드를 재귀적으로 펼치기
+    const expandNodeRecursively = async (nodeId: string) => {
+      const node = nodes.value.get(nodeId)
+      if (!node) return
+
+      if (node.hasChildren) {
+        // 펼치기
+        expandedNodeIds.value.add(nodeId)
+        updateNode(nodeId, { isExpanded: true })
+        
+        // 자식이 로드되지 않았으면 로드
+        if (!node.children || node.children.length === 0) {
+          await loadChildren(nodeId)
+        }
+        
+        // 자식들도 재귀적으로 펼치기
+        const updatedNode = nodes.value.get(nodeId)
+        if (updatedNode?.children) {
+          for (const child of updatedNode.children) {
+            await expandNodeRecursively(child.id)
+          }
+        }
+      }
+    }
+
+    // 모든 루트 노드부터 시작
+    for (const rootNode of rootNodes.value) {
+      await expandNodeRecursively(rootNode.id)
+    }
+  }
+
+  const collapseAll = () => {
+    // 모든 노드를 접기
+    expandedNodeIds.value.clear()
+    
+    // 모든 노드의 isExpanded 상태 업데이트
+    nodes.value.forEach((node, nodeId) => {
+      if (node.isExpanded) {
+        updateNode(nodeId, { isExpanded: false })
+      }
+    })
+  }
+
   const reset = () => {
     nodes.value.clear()
     expandedNodeIds.value.clear()
@@ -151,6 +195,8 @@ export const useTreeStore = defineStore('tree', () => {
     selectNode,
     clearSelection,
     getNodeChildren,
+    expandAll,
+    collapseAll,
     reset,
   }
 })

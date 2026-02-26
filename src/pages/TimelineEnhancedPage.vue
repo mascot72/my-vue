@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import GroupsTree from '@/domains/timeline/components/tree/GroupsTree.vue'
+import ExpandAllControl from '@/domains/timeline/components/tree/ExpandAllControl.vue'
 import TimelineView from '@/domains/timeline/components/TimelineView.vue'
 import LayerPopup from '@/domains/timeline/components/items/LayerPopup.vue'
 import { useItemsStore } from '@/domains/timeline/store/items.store'
@@ -27,10 +28,22 @@ const { items } = storeToRefs(itemsStore)
 const treeStore = useTreeStore()
 const { nodes } = storeToRefs(treeStore)
 
+// 모두 펼치기/접기 상태
+const expandAllGroups = ref(false)
+
 // 초기 로드
 onMounted(async () => {
   await treeStore.loadRootNodes()
   await itemsStore.loadAllItems()
+})
+
+// 모두 펼치기/접기 토글 감지
+watch(expandAllGroups, async (newValue) => {
+  if (newValue) {
+    await treeStore.expandAll()
+  } else {
+    treeStore.collapseAll()
+  }
 })
 
 // 페이지를 떠날 때 store 초기화
@@ -133,6 +146,9 @@ const handleGroupClick = async (groupId: string) => {
     <div class="page-content" :class="{ 'with-sidebar': props.showGroupsTree }">
       <!-- 왼쪽: Groups Tree (선택적 표시) -->
       <aside v-if="props.showGroupsTree" class="groups-section">
+        <div class="groups-controls">
+          <ExpandAllControl v-model="expandAllGroups" />
+        </div>
         <GroupsTree />
       </aside>
 
@@ -140,8 +156,16 @@ const handleGroupClick = async (groupId: string) => {
       <main class="items-section" :class="{ 'full-width': !props.showGroupsTree }">
         <div class="timeline-wrapper">
           <div class="timeline-header">
-            <h3>Items Timeline</h3>
-            <p class="timeline-subtitle">Items displayed on timeline grid by date range</p>
+            <div class="timeline-header-content">
+              <div class="timeline-header-text">
+                <h3>Items Timeline</h3>
+                <p class="timeline-subtitle">Items displayed on timeline grid by date range</p>
+              </div>
+              <!-- GroupsTree가 숨겨진 경우 여기에 체크박스 표시 -->
+              <div v-if="!props.showGroupsTree" class="timeline-controls">
+                <ExpandAllControl v-model="expandAllGroups" />
+              </div>
+            </div>
           </div>
           <div class="timeline-container">
             <TimelineView 
@@ -209,8 +233,23 @@ const handleGroupClick = async (groupId: string) => {
 
 .groups-section {
   height: 100%;
-  overflow-y: auto;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.groups-controls {
+  padding: 0.75rem 1rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.groups-section :deep(.groups-tree) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .items-section {
@@ -241,6 +280,18 @@ const handleGroupClick = async (groupId: string) => {
   flex-shrink: 0;
 }
 
+.timeline-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.timeline-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
 .timeline-header h3 {
   margin: 0 0 0.25rem 0;
   font-size: 1rem;
@@ -252,6 +303,10 @@ const handleGroupClick = async (groupId: string) => {
   margin: 0;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.timeline-controls {
+  flex-shrink: 0;
 }
 
 .timeline-container {
@@ -284,6 +339,16 @@ const handleGroupClick = async (groupId: string) => {
 
   .page-header h1 {
     font-size: 1.5rem;
+  }
+  
+  .timeline-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .timeline-controls {
+    width: 100%;
   }
 }
 
