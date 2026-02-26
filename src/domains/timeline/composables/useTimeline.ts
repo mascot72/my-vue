@@ -50,6 +50,7 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
     },
     // 그룹 템플릿 렌더링
     groupTemplate: (group: any) => {
+      if (!group) return ''
       const div = document.createElement('div')
       div.className = 'timeline-group-label'
       

@@ -22,7 +22,7 @@ import { RouterLink, RouterView } from 'vue-router'
     </header>
 
     <main class="main-content">
-      <RouterView />
+      <RouterView :key="$route.fullPath" />
     </main>
   </div>
 </template>

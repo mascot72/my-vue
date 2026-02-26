@@ -22,6 +22,8 @@ const groups = [
   { id: 1, content: 'Team A', title: 'Development Team' },
   { id: 2, content: 'Team B', title: 'Design Team' },
   { id: 3, content: 'Team C', title: 'QA Team' },
+  // { id: 3-1, parentId: 3, content: 'Team C Subgroup', title: 'QA Team Subgroup' },
+  // { id: 3-2, parentId: 3, content: 'Team C Subgroup 2', title: 'QA Team Subgroup 2' },
 ]
 
 onMounted(() => {

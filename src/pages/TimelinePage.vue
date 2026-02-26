@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useTimelineStore } from '@/domains/timeline/store/timeline.store'
 import TimelineView from '@/domains/timeline/components/TimelineView.vue'
 
@@ -7,6 +7,10 @@ const store = useTimelineStore()
 
 onMounted(() => {
   store.load()
+})
+
+onUnmounted(() => {
+  store.reset()
 })
 </script>
 
@@ -20,6 +24,7 @@ onMounted(() => {
       <TimelineView
         v-if="!store.loading"
         :items="store.items"
+        theme-class="timeline-basic-theme"
       />
       <div v-else class="loading-state">
         <div class="spinner"></div>
@@ -86,5 +91,29 @@ onMounted(() => {
   .timeline-content {
     padding: 1rem;
   }
+}
+
+/* TimelinePage 전용 vis-timeline 스타일 */
+.timeline-content :deep(.timeline-basic-theme.vis-timeline) {
+  border-color: #3b82f6;
+  box-shadow: 0 1px 3px 0 rgb(59 130 246 / 0.1);
+}
+
+.timeline-content :deep(.timeline-basic-theme .vis-panel) {
+  background: #f8fafc;
+}
+
+.timeline-content :deep(.timeline-basic-theme .vis-timeline .vis-item) {
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  border-left: 3px solid #3b82f6;
+}
+
+.timeline-content :deep(.timeline-basic-theme .vis-grid.vis-major) {
+  border-color: #60a5fa;
+}
+
+.timeline-content :deep(.timeline-basic-theme .vis-current-time) {
+  background-color: #2563eb;
+  width: 3px;
 }
 </style>

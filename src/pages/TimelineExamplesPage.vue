@@ -112,7 +112,7 @@ const examples: Example[] = [
   },
 ]
 
-const selectedExample = ref<Example>(examples[0])
+const selectedExample = ref<Example>(examples[0]!)
 
 const categories = Array.from(new Set(examples.map((e) => e.category)))
 
@@ -281,5 +281,28 @@ const getExamplesByCategory = (category: string) => {
   flex: 1;
   overflow: auto;
   padding: 24px;
+}
+
+/* TimelineExamplesPage 전용 vis-timeline 스타일 */
+.content-body :deep(.vis-timeline) {
+  border-color: #f59e0b;
+  box-shadow: 0 1px 3px 0 rgb(245 158 11 / 0.1);
+}
+
+.content-body :deep(.vis-panel) {
+  background: #fffbeb;
+}
+
+.content-body :deep(.vis-grid.vis-major) {
+  border-color: #fbbf24;
+}
+
+.content-body :deep(.vis-current-time) {
+  background-color: #f59e0b;
+}
+
+.content-body :deep(.vis-item) {
+  border-color: #f59e0b;
+  opacity: 0.95;
 }
 </style>

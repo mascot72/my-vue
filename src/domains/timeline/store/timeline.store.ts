@@ -14,5 +14,10 @@ export const useTimelineStore = defineStore('timeline', {
       this.items = await fetchTimelineItems()
       this.loading = false
     },
+    
+    reset() {
+      this.items = []
+      this.loading = false
+    },
   },
 })

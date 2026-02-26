@@ -4,10 +4,16 @@ import { useTimeline } from '../composables/useTimeline'
 import type { TimelineItem } from '../types'
 import type { TimelineGroup } from 'vis-timeline'
 
-const props = defineProps<{
-  items: TimelineItem[]
-  groups?: TimelineGroup[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    items: TimelineItem[]
+    groups?: TimelineGroup[]
+    themeClass?: string
+  }>(),
+  {
+    themeClass: 'timeline-default',
+  }
+)
 
 const emit = defineEmits<{
   itemHover: [{ itemId: string | null; x: number; y: number }]
@@ -70,5 +76,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="container" style="width: 100%; height: 100%;" />
+  <div ref="container" :class="props.themeClass" style="width: 100%; height: 100%;" />
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import GroupsTree from '@/domains/timeline/components/tree/GroupsTree.vue'
 import TimelineView from '@/domains/timeline/components/TimelineView.vue'
@@ -31,6 +31,12 @@ const { nodes } = storeToRefs(treeStore)
 onMounted(async () => {
   await treeStore.loadRootNodes()
   await itemsStore.loadAllItems()
+})
+
+// 페이지를 떠날 때 store 초기화
+onUnmounted(() => {
+  treeStore.reset()
+  itemsStore.reset()
 })
 
 // 표시되는 노드를 재귀적으로 수집 (루트 + 펼쳐진 노드의 자식들) - 트리 순서 유지
@@ -141,6 +147,7 @@ const handleGroupClick = async (groupId: string) => {
             <TimelineView 
               :items="timelineItems" 
               :groups="timelineGroups"
+              theme-class="timeline-enhanced-theme"
               @item-hover="handleItemHover"
               @group-click="handleGroupClick"
             />
@@ -161,7 +168,6 @@ const handleGroupClick = async (groupId: string) => {
 
 <style scoped>
 @import '@/domains/timeline/styles/timeline.css';
-
 .timeline-enhanced-page {
   height: 100%;
   display: flex;
@@ -279,5 +285,39 @@ const handleGroupClick = async (groupId: string) => {
   .page-header h1 {
     font-size: 1.5rem;
   }
+}
+
+/* TimelineEnhancedPage 전용 vis-timeline 스타일 */
+.timeline-container :deep(.timeline-enhanced-theme.vis-timeline) {
+  border-color: #10b981;
+  box-shadow: 0 1px 3px 0 rgb(16 185 129 / 0.1);
+  background: white;
+}
+
+.timeline-container :deep(.timeline-enhanced-theme .vis-panel) {
+  background: linear-gradient(to bottom, #ffffff 0%, #f0fdf4 100%);
+}
+
+.timeline-container :deep(.timeline-enhanced-theme .vis-grid.vis-major) {
+  border-color: #34d399;
+}
+
+.timeline-container :deep(.timeline-enhanced-theme .vis-current-time) {
+  background-color: #059669;
+  width: 2px;
+}
+
+.timeline-container :deep(.timeline-enhanced-theme .vis-labelset .vis-label:hover) {
+  background: #ecfdf5;
+}
+
+/* Enhanced 페이지의 카드 스타일 커스터마이징 */
+.timeline-container :deep(.timeline-enhanced-theme .timeline-card) {
+  box-shadow: 0 1px 3px 0 rgb(16 185 129 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+.timeline-container :deep(.timeline-enhanced-theme .timeline-card:hover) {
+  box-shadow: 0 4px 12px 0 rgb(16 185 129 / 0.15), 0 2px 4px -1px rgb(0 0 0 / 0.08);
+  border-color: #10b981;
 }
 </style>
