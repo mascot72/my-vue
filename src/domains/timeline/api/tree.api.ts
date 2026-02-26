@@ -95,6 +95,8 @@ const mockTreeData: TreeNodeData[] = [
   // Level 4 - CI/CD (leaf nodes)
   { id: '1-3-2-1', name: 'GitHub Actions', level: 4, parentId: '1-3-2', hasChildren: false },
   { id: '1-3-2-2', name: 'Jenkins', level: 4, parentId: '1-3-2', hasChildren: false },
+  { id: '1-3-2-3', name: 'GitLab CI', level: 4, parentId: '1-3-2', hasChildren: false },
+  { id: '1-3-2-4', name: 'CircleCI', level: 4, parentId: '1-3-2', hasChildren: false },
 ]
 
 /**
