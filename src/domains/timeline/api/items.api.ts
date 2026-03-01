@@ -272,7 +272,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.1.0',
         downloads: 16700,
       },
-      groupId: ''
+      groupId: '1-1-3'
     },
   ],
   '1-1-4': [ // Performance
@@ -293,7 +293,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.9.0',
         downloads: 22400,
       },
-      groupId: ''
+      groupId: '1-1-4'
     },
   ],
   '1-2-3': [ // Microservices
@@ -314,7 +314,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.6.0',
         downloads: 13900,
       },
-      groupId: ''
+      groupId: '1-2-3'
     },
   ],
   '1-2-4': [ // Security
@@ -335,7 +335,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '3.1.0',
         downloads: 28600,
       },
-      groupId: ''
+      groupId: '1-2-4'
     },
   ],
   '1-3-3': [ // Monitoring
@@ -356,7 +356,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.4.0',
         downloads: 20100,
       },
-      groupId: ''
+      groupId: '1-3-3'
     },
   ],
   '2-1-1': [ // SEO
@@ -377,7 +377,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.8.0',
         downloads: 15300,
       },
-      groupId: ''
+      groupId: '2-1-1'
     },
   ],
   '2-1-2': [ // SEM
@@ -398,7 +398,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.2.0',
         downloads: 12700,
       },
-      groupId: ''
+      groupId: '2-1-2'
     },
   ],
   '2-1-3': [ // Social Media
@@ -419,7 +419,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.0.0',
         downloads: 18400,
       },
-      groupId: ''
+      groupId: '2-1-3'
     },
   ],
   '2-2-1': [ // Blog
@@ -440,7 +440,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.6.0',
         downloads: 11800,
       },
-      groupId: ''
+      groupId: '2-2-1'
     },
   ],
   '2-2-2': [ // Video
@@ -461,7 +461,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.1.0',
         downloads: 7900,
       },
-      groupId: ''
+      groupId: '2-2-2'
     },
   ],
   '2-2-3': [ // Documentation
@@ -482,7 +482,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '3.0.0',
         downloads: 24800,
       },
-      groupId: ''
+      groupId: '2-2-3'
     },
   ],
   '3-1-1': [ // Fortune 500
@@ -503,7 +503,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.1.0',
         downloads: 9200,
       },
-      groupId: ''
+      groupId: '3-1-1'
     },
   ],
   '3-1-2': [ // Mid-Market
@@ -524,7 +524,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.7.0',
         downloads: 13400,
       },
-      groupId: ''
+      groupId: '3-1-2'
     },
   ],
   '3-2-1': [ // Startups
@@ -545,7 +545,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.4.0',
         downloads: 10600,
       },
-      groupId: ''
+      groupId: '3-2-1'
     },
   ],
   '3-2-2': [ // Small Business
@@ -566,7 +566,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.5.0',
         downloads: 8700,
       },
-      groupId: ''
+      groupId: '3-2-2'
     },
   ],
   
@@ -608,7 +608,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.0.0',
         downloads: 12350,
       },
-      groupId: ''
+      groupId: '1-1-1-1'
     },
     {
       id: 'item-3',
@@ -627,7 +627,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.0.0-beta',
         downloads: 8200,
       },
-      groupId: ''
+      groupId: '1-1-1-1'
     },
   ],
   '1-1-1-2': [ // State Management
@@ -648,7 +648,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '3.1.0',
         downloads: 25600,
       },
-      groupId: ''
+      groupId: '1-1-1-2'
     },
     {
       id: 'item-5',
@@ -667,7 +667,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.3.0',
         downloads: 18900,
       },
-      groupId: ''
+      groupId: '1-1-1-2'
     },
   ],
   '1-1-1-3': [ // Routing
@@ -688,7 +688,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.1.0',
         downloads: 19500,
       },
-      groupId: ''
+      groupId: '1-1-1-3'
     },
   ],
   '1-1-2-1': [ // Hooks Library
@@ -709,7 +709,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.5.0',
         downloads: 22100,
       },
-      groupId: ''
+      groupId: '1-1-2-1'
     },
   ],
   '1-1-2-2': [ // Context API
@@ -730,7 +730,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.3.0',
         downloads: 16800,
       },
-      groupId: ''
+      groupId: '1-1-2-2'
     },
   ],
   '1-1-2-3': [ // Server Components
@@ -751,7 +751,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '0.9.0-beta',
         downloads: 5400,
       },
-      groupId: ''
+      groupId: '1-1-2-3'
     },
   ],
   '1-2-1-1': [ // REST API
@@ -772,7 +772,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '4.0.0',
         downloads: 35000,
       },
-      groupId: ''
+      groupId: '1-2-1-1'
     },
     {
       id: 'item-8',
@@ -791,7 +791,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '3.2.0',
         downloads: 28400,
       },
-      groupId: ''
+      groupId: '1-2-1-1'
     },
   ],
   '1-2-1-2': [ // GraphQL
@@ -812,7 +812,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.4.0',
         downloads: 20700,
       },
-      groupId: ''
+      groupId: '1-2-1-2'
     },
   ],
   '1-2-1-3': [ // WebSocket
@@ -833,7 +833,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.8.0',
         downloads: 17900,
       },
-      groupId: ''
+      groupId: '1-2-1-3'
     },
   ],
   '1-2-2-1': [ // PostgreSQL
@@ -854,7 +854,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '3.5.0',
         downloads: 26300,
       },
-      groupId: ''
+      groupId: '1-2-2-1'
     },
   ],
   '1-2-2-2': [ // Redis
@@ -867,7 +867,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
       priority: 'high',
       tags: ['redis', 'cache', 'performance'],
       start: '2026-01-05T09:00:00Z',
-      end: '2026-04-10T14:00:00Z',
+      end: '2026-02-10T14:00:00Z',
       createdAt: '2026-01-17T09:00:00Z',
       updatedAt: '2026-02-12T13:00:00Z',
       metadata: {
@@ -875,8 +875,27 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.2.0',
         downloads: 21400,
       },
-      groupId: ''
+      groupId: '1-2-2-2'
     },
+    {
+      id: 'item-redis-2',
+      title: 'Redis Pub/Sub Implementation',
+      description: 'Real-time messaging with Redis Pub/Sub',
+      imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop',
+      status: 'active',
+      priority: 'medium',
+      tags: ['redis', 'pubsub', 'realtime'],
+      start: '2026-02-20T10:00:00Z',
+      end: '2026-03-30T15:00:00Z',
+      createdAt: '2026-02-14T10:30:00Z',
+      updatedAt: '2026-02-22T14:30:00Z',
+      metadata: {
+        author: 'Liam Martinez',
+        version: '2.2.0',
+        downloads: 21400, 
+      },
+      groupId: '1-2-2-2'
+    }
   ],
   '1-2-2-3': [ // MongoDB
     {
@@ -896,7 +915,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '1.7.0',
         downloads: 14800,
       },
-      groupId: ''
+      groupId: '1-2-2-3'
     },
   ],
   '1-3-1-1': [ // AWS
@@ -917,7 +936,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '3.3.0',
         downloads: 30200,
       },
-      groupId: ''
+      groupId: '1-3-1-1'
     },
   ],
   '1-3-1-2': [ // Docker
@@ -938,7 +957,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.6.0',
         downloads: 25700,
       },
-      groupId: ''
+      groupId: '1-3-1-2'
     },
   ],
   '1-3-1-3': [ // Kubernetes
@@ -959,7 +978,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.8.0',
         downloads: 23600,
       },
-      groupId: ''
+      groupId: '1-3-1-3'
     },
   ],
   '1-3-2-1': [ // GitHub Actions
@@ -980,7 +999,7 @@ const mockItemsData: Record<string, ItemCard[]> = {
         version: '2.5.0',
         downloads: 27800,
       },
-      groupId: ''
+      groupId: '1-3-2-1'
     },
   ],
   '1-3-2-2': [ // Jenkins

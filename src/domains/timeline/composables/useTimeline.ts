@@ -9,7 +9,8 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
   const sixMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate())
   
   const options = {
-    stack: true,
+    stack: true, // 겹치지 않으면 같은 라인에 자동 배치
+    stackSubgroups: true, // 서브그룹도 스택
     zoomKey: 'ctrlKey',
     start: sixMonthsAgo,
     end: sixMonthsLater,
@@ -17,6 +18,8 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
     max: new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()),
     // 그룹 순서 설정 (order 속성 기준)
     groupOrder: 'order' as const,
+    // 그룹 높이를 자동으로 조정 (아이템 수에 따라)
+    groupHeightMode: 'auto' as const,
     // 시간축 설정
     orientation: 'top' as const,
     showCurrentTime: true,
@@ -38,8 +41,8 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
     // 아이템 높이 설정 (카드 형태)
     margin: {
       item: {
-        horizontal: 8,
-        vertical: 8,
+        horizontal: 4, // 수평 간격 줄임 (더 조밀하게)
+        vertical: 4, // 수직 간격 줄임
       },
     },
     // HTML 템플릿 렌더링

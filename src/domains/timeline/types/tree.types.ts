@@ -7,7 +7,7 @@ export interface TreeNode {
   name: string
   level: number // 1~4 depth
   parentId?: string
-  children?: TreeNode[]
+  childrenIds: string[] // ✅ 자식 ID만 저장 (Best Practice)
   hasChildren: boolean
   isExpanded: boolean
   isLoading: boolean

@@ -4,8 +4,8 @@ import type { TreeNode, TreeNodeData } from '../types/tree.types'
 import { fetchRootNodes, fetchChildNodes } from '../api/tree.api'
 
 export const useTreeStore = defineStore('tree', () => {
-  // State
-  const nodes = ref<Map<string, TreeNode>>(new Map())
+  // State - 심플한 객체 구조로 변경
+  const nodes = ref<Record<string, TreeNode>>({})
   const expandedNodeIds = ref<Set<string>>(new Set())
   const selectedNodeId = ref<string | null>(null)
   const loading = ref(false)
@@ -13,18 +13,34 @@ export const useTreeStore = defineStore('tree', () => {
 
   // Computed
   const rootNodes = computed(() => {
-    return Array.from(nodes.value.values()).filter((node) => node.level === 1)
+    return Object.values(nodes.value).filter((node) => node.level === 1)
   })
 
   const selectedNode = computed(() => {
-    return selectedNodeId.value ? nodes.value.get(selectedNodeId.value) : null
+    return selectedNodeId.value ? nodes.value[selectedNodeId.value] : null
   })
+
+  // Helper: 특정 노드 가져오기
+  const getNode = (nodeId: string): TreeNode | undefined => {
+    return nodes.value[nodeId]
+  }
+
+  // Helper: 자식 노드들 가져오기 (항상 최신 상태)
+  const getChildren = (nodeId: string): TreeNode[] => {
+    const node = nodes.value[nodeId]
+    if (!node || !node.childrenIds || node.childrenIds.length === 0) {
+      return []
+    }
+    return node.childrenIds
+      .map(childId => nodes.value[childId])
+      .filter((child): child is TreeNode => child !== undefined)
+  }
 
   // Actions
   const convertToTreeNode = (data: TreeNodeData): TreeNode => {
     return {
       ...data,
-      children: [],
+      childrenIds: [], // ✅ 빈 ID 배열로 초기화
       isExpanded: expandedNodeIds.value.has(data.id),
       isLoading: false,
     }
@@ -32,13 +48,21 @@ export const useTreeStore = defineStore('tree', () => {
 
   const addNode = (nodeData: TreeNodeData) => {
     const node = convertToTreeNode(nodeData)
-    nodes.value.set(node.id, node)
+    // 반응성을 위해 새 객체 생성
+    nodes.value = {
+      ...nodes.value,
+      [node.id]: node
+    }
   }
 
   const updateNode = (nodeId: string, updates: Partial<TreeNode>) => {
-    const node = nodes.value.get(nodeId)
+    const node = nodes.value[nodeId]
     if (node) {
-      nodes.value.set(nodeId, { ...node, ...updates })
+      // 반응성을 위해 새 객체 생성
+      nodes.value = {
+        ...nodes.value,
+        [nodeId]: { ...node, ...updates }
+      }
     }
   }
 
@@ -59,58 +83,83 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   const loadChildren = async (parentId: string) => {
-    const parentNode = nodes.value.get(parentId)
-    if (!parentNode) return
+    const parentNode = nodes.value[parentId]
+    if (!parentNode) {
+      console.error(`loadChildren: Parent node ${parentId} not found`)
+      return
+    }
 
+    console.log(`[Store] Loading children for: ${parentId}`)
     updateNode(parentId, { isLoading: true })
+    
     try {
       const childrenData = await fetchChildNodes(parentId)
-      const children: TreeNode[] = []
+      console.log(`[Store] Fetched ${childrenData.length} children for ${parentId}:`, childrenData.map(c => c.id))
       
+      // 자식 노드들을 먼저 추가
       childrenData.forEach((childData) => {
         addNode(childData)
-        const childNode = nodes.value.get(childData.id)
-        if (childNode) {
-          children.push(childNode)
-        }
       })
+      
+      // 자식 ID 배열 생성 (✅ TreeNode 객체가 아닌 ID만 저장)
+      const childrenIds: string[] = childrenData.map(childData => childData.id)
 
-      updateNode(parentId, { children, isLoading: false })
+      console.log(`[Store] Updating parent ${parentId} with ${childrenIds.length} children`)
+      
+      // 부모 노드 업데이트
+      updateNode(parentId, { 
+        childrenIds, // ✅ ID 배열만 저장
+        isLoading: false 
+      })
+      
+      // 최종 상태 확인
+      const updatedParent = nodes.value[parentId]
+      console.log(`[Store] Final state of ${parentId}:`, {
+        isExpanded: updatedParent?.isExpanded,
+        childrenIdsCount: updatedParent?.childrenIds?.length,
+        childrenIds: updatedParent?.childrenIds
+      })
     } catch (err) {
-      console.error('Error loading children:', err)
+      console.error('[Store] Error loading children:', err)
       updateNode(parentId, { isLoading: false })
     }
   }
 
   const toggleNode = async (nodeId: string) => {
-    const node = nodes.value.get(nodeId)
-    if (!node) return
+    const node = nodes.value[nodeId]
+    if (!node) {
+      console.error(`[Store] toggleNode: Node ${nodeId} not found`)
+      return
+    }
+
+    console.log(`[Store] toggleNode: ${nodeId}, current isExpanded: ${node.isExpanded}`)
 
     const isExpanding = !node.isExpanded
     
-    // 펼치기
     if (isExpanding) {
+      // 펼치기
       expandedNodeIds.value.add(nodeId)
       updateNode(nodeId, { isExpanded: true })
       
-      // 자식이 아직 로드되지 않았으면 로드
-      if (node.hasChildren && (!node.children || node.children.length === 0)) {
+      // 자식 로드가 필요한 경우 (childrenIds가 없거나 비어있으면)
+      if (node.hasChildren && (!node.childrenIds || node.childrenIds.length === 0)) {
+        console.log(`[Store] Loading children for ${nodeId}...`)
         await loadChildren(nodeId)
       }
-    } 
-    // 접기
-    else {
+    } else {
+      // 접기
+      console.log(`[Store] Collapsing node ${nodeId}`)
       expandedNodeIds.value.delete(nodeId)
       updateNode(nodeId, { isExpanded: false })
     }
   }
 
   const selectNode = (nodeId: string) => {
-    selectedNodeId.value = nodeId
-    const node = nodes.value.get(nodeId)
+    const node = nodes.value[nodeId]
+    if (!node) return
     
-    // 리프 노드인 경우에만 선택 (level 4 또는 hasChildren이 false)
-    if (node && (!node.hasChildren || node.level === 4)) {
+    // 리프 노드만 선택
+    if (!node.hasChildren || node.level === 4) {
       selectedNodeId.value = nodeId
     }
   }
@@ -120,33 +169,27 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   const getNodeChildren = (nodeId: string): TreeNode[] => {
-    const node = nodes.value.get(nodeId)
-    return node?.children || []
+    return getChildren(nodeId)
   }
 
   const expandAll = async () => {
-    // 모든 노드를 재귀적으로 펼치기
     const expandNodeRecursively = async (nodeId: string) => {
-      const node = nodes.value.get(nodeId)
-      if (!node) return
+      const node = nodes.value[nodeId]
+      if (!node || !node.hasChildren) return
 
-      if (node.hasChildren) {
-        // 펼치기
-        expandedNodeIds.value.add(nodeId)
-        updateNode(nodeId, { isExpanded: true })
-        
-        // 자식이 로드되지 않았으면 로드
-        if (!node.children || node.children.length === 0) {
-          await loadChildren(nodeId)
-        }
-        
-        // 자식들도 재귀적으로 펼치기
-        const updatedNode = nodes.value.get(nodeId)
-        if (updatedNode?.children) {
-          for (const child of updatedNode.children) {
-            await expandNodeRecursively(child.id)
-          }
-        }
+      // 펼치기
+      expandedNodeIds.value.add(nodeId)
+      updateNode(nodeId, { isExpanded: true })
+      
+      // 자식 로드
+      if (!node.childrenIds || node.childrenIds.length === 0) {
+        await loadChildren(nodeId)
+      }
+      
+      // 자식들도 재귀적으로 펼치기
+      const children = getChildren(nodeId)
+      for (const child of children) {
+        await expandNodeRecursively(child.id)
       }
     }
 
@@ -157,19 +200,18 @@ export const useTreeStore = defineStore('tree', () => {
   }
 
   const collapseAll = () => {
-    // 모든 노드를 접기
     expandedNodeIds.value.clear()
     
-    // 모든 노드의 isExpanded 상태 업데이트
-    nodes.value.forEach((node, nodeId) => {
-      if (node.isExpanded) {
-        updateNode(nodeId, { isExpanded: false })
-      }
+    // 모든 노드의 isExpanded를 false로 업데이트
+    const updatedNodes: Record<string, TreeNode> = {}
+    Object.entries(nodes.value).forEach(([id, node]) => {
+      updatedNodes[id] = { ...node, isExpanded: false }
     })
+    nodes.value = updatedNodes
   }
 
   const reset = () => {
-    nodes.value.clear()
+    nodes.value = {}
     expandedNodeIds.value.clear()
     selectedNodeId.value = null
     loading.value = false
@@ -187,6 +229,10 @@ export const useTreeStore = defineStore('tree', () => {
     // Computed
     rootNodes,
     selectedNode,
+    
+    // Helpers
+    getNode,
+    getChildren,
     
     // Actions
     loadRootNodes,

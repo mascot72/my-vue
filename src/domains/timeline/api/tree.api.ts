@@ -118,6 +118,7 @@ export const fetchChildNodes = async (parentId: string): Promise<TreeNodeData[]>
   return new Promise((resolve) => {
     setTimeout(() => {
       const children = mockTreeData.filter((node) => node.parentId === parentId)
+      console.log(`[tree.api] fetchChildNodes(${parentId}) found ${children.length} children:`, children.map(c => ({ id: c.id, name: c.name, level: c.level })))
       resolve(children)
     }, 300)
   })

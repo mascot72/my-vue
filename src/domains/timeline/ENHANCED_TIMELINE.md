@@ -68,6 +68,8 @@ src/domains/timeline/
 ├── composables/
 │   ├── useTimeline.ts        # vis-timeline 설정 및 API
 │   ├── useItemsTimeline.ts   # ItemCard를 TimelineItem으로 변환
+│   ├── useVisibleNodes.ts    # 가시적 노드 컬렉션 및 필터링
+│   ├── useTimelineGroups.ts  # 타임라인 그룹 변환 및 생성
 │   └── useTimelineProjectData.ts  # 프로젝트 데이터 통합 (예제용)
 ├── components/
 │   ├── tree/
@@ -215,18 +217,24 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 ```typescript
 {
   // State
-  nodes: Map<string, TreeNode>
+  nodes: Ref<Record<string, TreeNode>>  // ID 기반 노드 저장 (ref 객체)
   expandedNodeIds: Set<string>
   selectedNodeId: string | null
   loading: boolean
   error: string | null
   
+  // Getters
+  getNode(nodeId: string): TreeNode | undefined  // 노드 조회
+  getChildren(nodeId: string): TreeNode[]        // 자식 노드 배열 반환
+  
   // Actions
-  loadRootNodes()
-  loadChildren(parentId)
-  toggleNode(nodeId)
-  selectNode(nodeId)
-  clearSelection()
+  loadRootNodes()             // 루트 노드 로드
+  loadChildren(parentId)      // 자식 노드 로드 (childrenIds 저장)
+  toggleNode(nodeId)          // 펼치기/접기 토글
+  selectNode(nodeId)          // 노드 선택
+  clearSelection()            // 선택 해제
+  expandAll()                 // 모든 노드 펼치기
+  collapseAll()               // 모든 노드 접기
 }
 ```
 
@@ -251,13 +259,18 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 ### Timeline 옵션
 ```typescript
 {
-  stack: true,              // 아이템 겹침 방지
+  stack: true,              // 아이템 겹침 방지 및 자동 스태킹
+  stackSubgroups: true,     // 서브그룹 내 스태킹 활성화
+  groupHeightMode: 'auto',  // 그룹 높이 동적 조정
   zoomKey: 'ctrlKey',       // Ctrl + 휠로 줌
   groupOrder: 'order',      // 그룹 순서 속성 기준 정렬
   start: -3개월,            // 시작 시간
   end: +3개월,              // 종료 시간  
   orientation: 'top',       // 시간축 위쪽
   showCurrentTime: true,    // 현재 시간 라인 표시
+  margin: {
+    item: { horizontal: 4, vertical: 4 }  // 컴팩트한 아이템 간격
+  },
   timeAxis: {
     scale: 'week',          // 주 단위
     step: 1                 // 매주
@@ -331,6 +344,58 @@ fetchItemById(itemId: string): Promise<ItemCard | null>
 - **Scroll**: 각 영역 독립적으로 스크롤 가능
 
 ## 최근 업데이트
+
+### 2026-03-02: 트리 반응성 개선 및 코드 아키텍처 최적화
+
+#### 1. 트리 데이터 구조 개선
+- **childrenIds 패턴 도입**: `children: TreeNode[]`에서 `childrenIds: string[]`로 변경
+  - 객체 스냅샷 문제 해결 (stale reference 방지)
+  - ID 기반 참조로 항상 최신 노드 상태 조회
+- **ref<Record<string, TreeNode>> 패턴**: reactive Map에서 Vue 친화적인 ref 객체로 변경
+  - 예측 가능한 Vue 반응성 보장
+  - Object 연산으로 성능 개선
+- **getChildren() 헬퍼**: 동적으로 자식 노드를 조회하는 유틸리티 함수 추가
+  - 항상 최신 상태 반환
+  - 컴포넌트에서 computed와 함께 사용
+
+#### 2. 타임라인 아이템 스태킹 최적화
+- **stack: true**: 겹치지 않는 아이템을 같은 라인에 배치
+- **stackSubgroups: true**: 서브그룹 내에서도 스태킹 활성화
+- **groupHeightMode: 'auto'**: 그룹 높이 동적 조정
+- **margin 최적화**: 아이템 간격 8px → 4px로 축소하여 더 컴팩트한 레이아웃
+
+#### 3. 코드 단순화 및 관심사 분리
+- **useVisibleNodes 컴포저블 생성** (45줄)
+  - 가시적 노드 수집 로직 분리
+  - `visibleNodes`, `visibleNodeIds` computed 제공
+  - 재귀 로직을 별도 모듈로 캡슐화
+  
+- **useTimelineGroups 컴포저블 생성** (40줄)
+  - 타임라인 그룹 변환 로직 분리
+  - `getNodeIcon()` 헬퍼 함수
+  - `createTimelineGroup()` 팩토리 함수
+  - 단일 책임 원칙(SRP) 적용
+
+- **TimelineEnhancedPage 단순화**: 150줄 → 90줄 (40% 감소)
+  - 90+ 줄의 인라인 로직 제거
+  - 컴포저블 조합으로 깔끔한 구조
+  - 가독성 및 테스트 용이성 향상
+
+#### 4. 컴포넌트 패턴 개선
+- **TreeNodeItem.vue**: nodeId prop만 전달, 컴포넌트 내부에서 최신 노드 조회
+  ```typescript
+  const node = computed(() => treeStore.getNode(props.nodeId))
+  const children = computed(() => treeStore.getChildren(props.nodeId))
+  ```
+- **GroupsTree.vue**: childrenIds 패턴으로 재귀 렌더링
+- **반응성 보장**: 모든 하위 depth(3~4 depth)에서 정상 동작
+
+#### 5. 아키텍처 개선 효과
+- **코드 품질**: 관심사 분리로 유지보수성 향상
+- **재사용성**: 컴포저블을 다른 페이지에서도 사용 가능
+- **테스트 용이성**: 독립된 모듈로 단위 테스트 작성 가능
+- **성능**: ID 기반 참조로 불필요한 객체 복사 제거
+- **타입 안전성**: TypeScript로 엄격한 타입 검사
 
 ### 2026-02-24: 그룹 펼침/접기 및 통합 모드 구현
 

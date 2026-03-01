@@ -7,12 +7,12 @@ import TimelineView from '@/domains/timeline/components/TimelineView.vue'
 import LayerPopup from '@/domains/timeline/components/items/LayerPopup.vue'
 import { useItemsStore } from '@/domains/timeline/store/items.store'
 import { useTreeStore } from '@/domains/timeline/store/tree.store'
+import { useVisibleNodes } from '@/domains/timeline/composables/useVisibleNodes'
+import { useTimelineGroups } from '@/domains/timeline/composables/useTimelineGroups'
 import { useItemsTimeline } from '@/domains/timeline/composables/useItemsTimeline'
 import type { ItemCard } from '@/domains/timeline/types/item.types'
-import type { TreeNode } from '@/domains/timeline/types/tree.types'
-import type { TimelineGroup } from 'vis-timeline'
 
-// Props for switching between GroupsTree and Timeline Groups
+// Props
 const props = withDefaults(
   defineProps<{
     showGroupsTree?: boolean
@@ -22,10 +22,10 @@ const props = withDefaults(
   }
 )
 
+// Stores
 const itemsStore = useItemsStore()
-const { items } = storeToRefs(itemsStore)
-
 const treeStore = useTreeStore()
+const { items } = storeToRefs(itemsStore)
 const { nodes } = storeToRefs(treeStore)
 
 // 모두 펼치기/접기 상태
@@ -37,7 +37,7 @@ onMounted(async () => {
   await itemsStore.loadAllItems()
 })
 
-// 모두 펼치기/접기 토글 감지
+// 모두 펼치기/접기 토글
 watch(expandAllGroups, async (newValue) => {
   if (newValue) {
     await treeStore.expandAll()
@@ -46,66 +46,24 @@ watch(expandAllGroups, async (newValue) => {
   }
 })
 
-// 페이지를 떠날 때 store 초기화
+// 페이지 나갈 때 초기화
 onUnmounted(() => {
   treeStore.reset()
   itemsStore.reset()
 })
 
-// 표시되는 노드를 재귀적으로 수집 (루트 + 펼쳐진 노드의 자식들) - 트리 순서 유지
-const getVisibleNodesInOrder = (): TreeNode[] => {
-  const visibleNodes: TreeNode[] = []
-  
-  const collectVisible = (node: TreeNode) => {
-    visibleNodes.push(node)
-    
-    // 노드가 펼쳐져 있고 자식이 있으면 자식들도 순서대로 추가
-    if (node.isExpanded && node.children && node.children.length > 0) {
-      node.children.forEach((child: TreeNode) => collectVisible(child))
-    }
-  }
-  
-  // 루트 노드부터 시작 (순서대로)
-  Array.from(nodes.value.values())
-    .filter(node => node.level === 1)
-    .sort((a, b) => a.id.localeCompare(b.id)) // ID 순서대로 정렬
-    .forEach(rootNode => collectVisible(rootNode))
-  
-  return visibleNodes
-}
+// Visible 노드 관리
+const { visibleNodes, visibleNodeIds } = useVisibleNodes(nodes)
 
-// 표시되는 노드 ID 집합 (필터링용)
-const getVisibleNodeIds = (): Set<string> => {
-  return new Set(getVisibleNodesInOrder().map(node => node.id))
-}
+// Timeline Groups 생성
+const { timelineGroups } = useTimelineGroups(visibleNodes)
 
-// tree nodes를 timeline groups로 변환 (트리 순서대로)
-const timelineGroups = computed<TimelineGroup[]>(() => {
-  const visibleNodes = getVisibleNodesInOrder()
-  
-  return visibleNodes.map((node, index) => {
-    // 노드 타입에 따른 아이콘
-    const icon = !node.hasChildren ? '📄' : (node.isExpanded ? '📂' : '📁')
-    
-    return {
-      id: node.id,
-      content: `<div class="timeline-group-label" data-level="${node.level}">
-        <span class="timeline-group-icon">${icon}</span>
-        <span class="timeline-group-name">${node.name}</span>
-      </div>`,
-      title: node.name,
-      level: node.level,
-      order: index // 트리 순서 유지
-    }
-  })
-})
-
-// items를 timeline items로 변환 (펼쳐진 그룹의 아이템만 표시)
+// Visible Items만 필터링
 const visibleItems = computed(() => {
-  const visibleIds = getVisibleNodeIds()
-  return items.value.filter(item => visibleIds.has(item.groupId))
+  return items.value.filter(item => visibleNodeIds.value.has(item.groupId))
 })
 
+// Timeline Items 생성
 const { timelineItems } = useItemsTimeline(visibleItems)
 
 // 팝업 상태
@@ -113,26 +71,27 @@ const popupVisible = ref(false)
 const popupPosition = ref({ x: 0, y: 0 })
 const popupItem = ref<ItemCard | null>(null)
 
-// 카드 호버 이벤트 처리
+// 카드 호버 처리
 const handleItemHover = (event: { itemId: string | null; x: number; y: number }) => {
-  if (event.itemId) {
-    // itemId로 원본 아이템 찾기 (index 기반)
-    const index = parseInt(event.itemId) - 1
-    const item = visibleItems.value[index]
-    if (item) {
-      popupItem.value = item
-      popupPosition.value = { x: event.x, y: event.y }
-      popupVisible.value = true
-    }
-  } else {
+  if (!event.itemId) {
     popupVisible.value = false
     popupItem.value = null
+    return
+  }
+
+  const index = parseInt(event.itemId) - 1
+  const item = visibleItems.value[index]
+  
+  if (item) {
+    popupItem.value = item
+    popupPosition.value = { x: event.x, y: event.y }
+    popupVisible.value = true
   }
 }
 
-// 그룹 클릭 이벤트 처리 (펼치기/접기)
-const handleGroupClick = async (groupId: string) => {
-  await treeStore.toggleNode(groupId)
+// 그룹 클릭 처리 (펼치기/접기)
+const handleGroupClick = (groupId: string) => {
+  treeStore.toggleNode(groupId)
 }
 </script>
 

@@ -59,7 +59,7 @@ watch(selectedNodeId, (newNodeId) => {
         <TreeNodeItem
           v-for="node in rootNodes"
           :key="node.id"
-          :node="node"
+          :node-id="node.id"
           :level="1"
           @toggle="handleToggle"
           @select="handleSelect"
