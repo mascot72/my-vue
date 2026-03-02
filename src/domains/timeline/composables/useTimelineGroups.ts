@@ -23,7 +23,6 @@ const createTimelineGroup = (node: TreeNode, order: number): TimelineGroup => {
       <span class="timeline-group-name">${node.name}</span>
     </div>`,
     title: node.name,
-    level: node.level,
     order,
   }
 }
