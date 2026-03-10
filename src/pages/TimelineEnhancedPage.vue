@@ -66,6 +66,9 @@ const visibleItems = computed(() => {
 // Timeline Items 생성
 const { timelineItems } = useItemsTimeline(visibleItems)
 
+// TimelineView 참조
+const timelineViewRef = ref<InstanceType<typeof TimelineView> | null>(null)
+
 // 팝업 상태
 const popupVisible = ref(false)
 const popupPosition = ref({ x: 0, y: 0 })
@@ -92,6 +95,31 @@ const handleItemHover = (event: { itemId: string | null; x: number; y: number })
 // 그룹 클릭 처리 (펼치기/접기)
 const handleGroupClick = (groupId: string) => {
   treeStore.toggleNode(groupId)
+}
+
+// 아이템 클릭 처리 (확대/포커스)
+const handleItemClick = (itemId: string) => {
+  const index = parseInt(itemId) - 1
+  const item = visibleItems.value[index]
+  
+  if (item && timelineViewRef.value) {
+    // 카드의 start/end 날짜 기준으로 여유 공간 추가
+    const start = new Date(item.start)
+    const end = new Date(item.end)
+    
+    // 앞뒤로 20% 여유 공간 추가
+    const duration = end.getTime() - start.getTime()
+    const padding = duration * 0.2
+    
+    const focusStart = new Date(start.getTime() - padding)
+    const focusEnd = new Date(end.getTime() + padding)
+    
+    // 애니메이션과 함께 확대
+    timelineViewRef.value.focusOnItem(focusStart, focusEnd, {
+      animation: true,
+      duration: 800,
+    })
+  }
 }
 </script>
 
@@ -128,10 +156,12 @@ const handleGroupClick = (groupId: string) => {
           </div>
           <div class="timeline-container">
             <TimelineView 
+              ref="timelineViewRef"
               :items="timelineItems" 
               :groups="timelineGroups"
               theme-class="timeline-enhanced-theme"
               @item-hover="handleItemHover"
+              @item-click="handleItemClick"
               @group-click="handleGroupClick"
             />
           </div>

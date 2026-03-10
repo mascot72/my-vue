@@ -7,7 +7,7 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
   const now = new Date()
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
   const sixMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate())
-  
+
   const options = {
     stack: true, // 겹치지 않으면 같은 라인에 자동 배치
     stackSubgroups: true, // 서브그룹도 스택
@@ -46,39 +46,39 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
       },
     },
     // HTML 템플릿 렌더링
-    template: (item: any) => {
+    template: (item: Record<string, unknown>) => {
       const div = document.createElement('div')
-      div.innerHTML = item.content
+      div.innerHTML = item.content as string
       return (div.firstElementChild as HTMLElement) || div
     },
     // 그룹 템플릿 렌더링
-    groupTemplate: (group: any) => {
+    groupTemplate: (group: Record<string, unknown>) => {
       if (!group) return ''
       const div = document.createElement('div')
       div.className = 'timeline-group-label'
-      
+
       // 그룹에 content가 있으면 HTML로 렌더링
       if (group.content) {
-        div.innerHTML = group.content
+        div.innerHTML = String(group.content)
         return (div.firstElementChild as HTMLElement) || div
       }
-      
+
       // 기본 텍스트 렌더링
       const label = document.createElement('div')
       label.className = 'group-label-text'
-      label.textContent = group.content || group.title || String(group.id)
-      
+      label.textContent = String(group.content || group.title || group.id || '')
+
       // depth/level에 따른 스타일 적용
       if (group.level !== undefined) {
         label.setAttribute('data-level', String(group.level))
       }
-      
+
       div.appendChild(label)
       return div
     },
   } as const
-  
-  const timeline = groups 
+
+  const timeline = groups
     ? new Timeline(el, items, groups, options)
     : new Timeline(el, items, options)
 
@@ -95,7 +95,8 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
     focus: (id: string | number) => timeline.focus(id),
 
     // 시간 범위 관리
-    setWindow: (start: Date | number, end: Date | number) => timeline.setWindow(start, end),
+    setWindow: (start: Date | number, end: Date | number, options?: { animation?: boolean; duration?: number }) =>
+      timeline.setWindow(start, end, options),
     getWindow: () => timeline.getWindow(),
     moveTo: (time: Date | number, options?: { animation: boolean }) =>
       timeline.moveTo(time, options),

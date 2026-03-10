@@ -17,6 +17,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   itemHover: [{ itemId: string | null; x: number; y: number }]
+  itemClick: [itemId: string]
   groupClick: [groupId: string]
 }>()
 
@@ -44,12 +45,18 @@ onMounted(() => {
     emit('itemHover', { itemId: null, x: 0, y: 0 })
   })
 
-  // 그룹 클릭 이벤트 리스너
+  // 클릭 이벤트 리스너 (그룹/아이템)
   timelineApi.on('click', (properties?: unknown) => {
-    const eventProps = properties as { what?: string; group?: string | number }
+    const eventProps = properties as { what?: string; group?: string | number; item?: string | number }
+    
     // 그룹 레이블 영역을 클릭한 경우
     if (eventProps?.what === 'group-label' && eventProps?.group !== undefined) {
       emit('groupClick', String(eventProps.group))
+    }
+    
+    // 아이템을 클릭한 경우
+    if (eventProps?.what === 'item' && eventProps?.item !== undefined) {
+      emit('itemClick', String(eventProps.item))
     }
   })
 })
@@ -72,6 +79,24 @@ watch(
 
 onBeforeUnmount(() => {
   timelineApi?.destroy()
+})
+
+// 외부에서 사용할 수 있도록 메서드 노출
+defineExpose({
+  focusOnItem: (start: Date, end: Date, options?: { animation?: boolean; duration?: number }) => {
+    if (!timelineApi) return
+    
+    const animationOptions = {
+      animation: options?.animation ?? true,
+      duration: options?.duration ?? 1000,
+    }
+    
+    timelineApi.setWindow(start, end, animationOptions)
+  },
+  setWindow: (start: Date | number, end: Date | number) => {
+    timelineApi?.setWindow(start, end)
+  },
+  getApi: () => timelineApi,
 })
 </script>
 
