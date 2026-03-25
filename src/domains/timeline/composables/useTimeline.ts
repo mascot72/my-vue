@@ -46,9 +46,9 @@ export function useTimeline(el: HTMLElement, items: TimelineItem[], groups?: Tim
       },
     },
     // HTML 템플릿 렌더링
-    template: (item: Record<string, unknown>) => {
+    template: (item: Record<string, TimelineItem>) => {
       const div = document.createElement('div')
-      div.innerHTML = item.content as string
+      div.innerHTML = item.content as unknown as string
       return (div.firstElementChild as HTMLElement) || div
     },
     // 그룹 템플릿 렌더링
