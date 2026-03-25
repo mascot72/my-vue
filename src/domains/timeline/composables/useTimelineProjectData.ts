@@ -1,7 +1,11 @@
 import { ref, computed } from 'vue'
 import { fetchTimelineProject, fetchTaskDetails } from '../api/timeline.api'
-import { transformProjectToTimeline, generateTaskDetailHtml } from '../utils/dataTransformer'
-import type { TimelineItem, ProjectTask, TransformedTimelineData } from '../types'
+import {
+  transformBackendProjectToTimeline,
+  transformBackendItemToTaskDetailHtml,
+} from '../utils/dataTransformer'
+import type { ProjectTask, TransformedTimelineData } from '../types'
+import type { ItemCard } from '../types/item.types'
 
 /**
  * Timeline 프로젝트 데이터를 관리하는 Composable
@@ -14,8 +18,8 @@ export const useTimelineProjectData = () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const data = ref<TransformedTimelineData | null>(null)
-  const selectedTaskId = ref<number | null>(null)
-  const selectedTaskDetail = ref<ProjectTask | null>(null)
+  const selectedTaskId = ref<string | null>(null)
+  const selectedTaskDetail = ref<ItemCard | null>(null)
   const selectedTaskDetailHtml = ref<string | null>(null)
 
   /**
@@ -27,7 +31,7 @@ export const useTimelineProjectData = () => {
 
     try {
       const project = await fetchTimelineProject()
-      data.value = transformProjectToTimeline(project.groups, project.tasks)
+      data.value = transformBackendProjectToTimeline(project.groups, project.tasks)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project data'
       console.error('Error loading project:', err)
@@ -39,12 +43,12 @@ export const useTimelineProjectData = () => {
   /**
    * 특정 작업 상세 정보 조회
    */
-  const selectTask = async (taskId: number) => {
+  const selectTask = async (taskId: string) => {
     selectedTaskId.value = taskId
     try {
       selectedTaskDetail.value = await fetchTaskDetails(taskId)
       if (selectedTaskDetail.value) {
-        selectedTaskDetailHtml.value = generateTaskDetailHtml(selectedTaskDetail.value)
+        selectedTaskDetailHtml.value = transformBackendItemToTaskDetailHtml(selectedTaskDetail.value)
       }
     } catch (err) {
       console.error('Error loading task details:', err)

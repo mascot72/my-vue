@@ -36,7 +36,7 @@ export const useRoadmapViewModel = () => {
   const priorityFilter = ref<PriorityFilter>('all')
   const hideCompleted = ref(false)
   const viewMode = ref<ViewMode>('month')
-  const activeItemId = ref<number | null>(null)
+  const activeItemId = ref<string | null>(null)
 
   const stripHtml = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
@@ -89,11 +89,8 @@ export const useRoadmapViewModel = () => {
   }
 
   const selectRoadmapItem = async (itemId: string) => {
-    const nextId = Number(itemId)
-    if (Number.isNaN(nextId)) return
-
-    activeItemId.value = nextId
-    await selectTask(nextId)
+    activeItemId.value = itemId
+    await selectTask(itemId)
   }
 
   const clearRoadmapSelection = () => {
@@ -104,7 +101,7 @@ export const useRoadmapViewModel = () => {
   watch(filteredItems, (nextItems) => {
     if (!activeItemId.value) return
 
-    const exists = nextItems.some((item) => Number(item.id) === activeItemId.value)
+    const exists = nextItems.some((item) => String(item.id) === activeItemId.value)
     if (!exists) {
       clearRoadmapSelection()
     }

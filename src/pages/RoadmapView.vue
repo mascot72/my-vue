@@ -60,7 +60,7 @@ onMounted(async () => {
           :items="filteredItems"
           :groups="filteredGroups"
           :view-mode="viewMode"
-          :selected-item-id="activeItemId ? String(activeItemId) : null"
+          :selected-item-id="activeItemId"
           @update:view-mode="viewMode = $event"
           @select-item="selectRoadmapItem"
           @clear-selection="clearRoadmapSelection"

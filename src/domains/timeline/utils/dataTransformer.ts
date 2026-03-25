@@ -1,4 +1,6 @@
 import type { ProjectTask, ProjectGroup, TimelineItem, TransformedTimelineData } from '../types'
+import type { TreeNodeData } from '../types/tree.types'
+import type { ItemCard } from '../types/item.types'
 
 /**
  * Status별 색상 및 우선순위 스타일 정의
@@ -29,9 +31,9 @@ export const transformTaskToTimelineItem = (task: ProjectTask): TimelineItem => 
   const htmlContent = `
     <div style="padding: 8px;">
       <div style="display: flex; gap: 8px; align-items: flex-start;">
-        <img 
-          src="${task.imageUrl}" 
-          alt="${task.title}" 
+        <img
+          src="${task.imageUrl}"
+          alt="${task.title}"
           style="width: 60px; height: 60px; border-radius: 4px; object-fit: cover; flex-shrink: 0;"
         />
         <div style="flex: 1; min-width: 0;">
@@ -122,9 +124,9 @@ export const generateTaskDetailHtml = (task: ProjectTask): string => {
     <div style="padding: 16px; background: white; border-radius: 8px; max-width: 500px;">
       <!-- Header with image -->
       <div style="margin-bottom: 16px;">
-        <img 
-          src="${task.imageUrl}" 
-          alt="${task.title}" 
+        <img
+          src="${task.imageUrl}"
+          alt="${task.title}"
           style="width: 100%; height: 250px; border-radius: 6px; object-fit: cover; margin-bottom: 12px;"
         />
         <h2 style="margin: 0 0 8px 0; font-size: 20px;">${task.title}</h2>
@@ -191,4 +193,66 @@ export const generateTaskDetailHtml = (task: ProjectTask): string => {
       </div>
     </div>
   `
+}
+
+const normalizeStatus = (status: ItemCard['status']): ProjectTask['status'] => {
+  if (status === 'active') return 'in-progress'
+  if (status === 'pending') return 'planning'
+  if (status === 'archived') return 'on-hold'
+  return 'completed'
+}
+
+const normalizeAssignee = (item: ItemCard): string => {
+  const author = item.metadata?.author
+  return typeof author === 'string' && author.trim().length > 0 ? author : 'Unknown'
+}
+
+const normalizeProgress = (status: ItemCard['status']): number => {
+  if (status === 'completed') return 100
+  if (status === 'active') return 60
+  if (status === 'pending') return 20
+  return 0
+}
+
+const toProjectTask = (item: ItemCard): ProjectTask => ({
+  id: item.id,
+  groupId: item.groupId,
+  title: item.title,
+  description: item.description,
+  imageUrl: item.imageUrl || '',
+  status: normalizeStatus(item.status),
+  priority: item.priority,
+  assignee: normalizeAssignee(item),
+  startDate: item.start,
+  endDate: item.end,
+  progress: normalizeProgress(item.status),
+  tags: item.tags,
+  details: {
+    objectives: [item.description],
+    deliverables: [item.title],
+    resources: [`updated: ${item.updatedAt}`],
+  },
+})
+
+export const transformBackendProjectToTimeline = (
+  groups: TreeNodeData[],
+  tasks: ItemCard[],
+): TransformedTimelineData => {
+  const mappedGroups = groups.map((group) => ({
+    id: group.id,
+    content: `<div style="font-weight: 600;">${group.name}</div>`,
+    title: `${group.name}\nLevel: ${group.level}`,
+  }))
+
+  const mappedItems = tasks.map((task) => transformTaskToTimelineItem(toProjectTask(task)))
+
+  return {
+    groups: mappedGroups,
+    items: mappedItems,
+  }
+}
+
+export const transformBackendItemToTaskDetailHtml = (item: ItemCard): string => {
+  const projectTask = toProjectTask(item)
+  return generateTaskDetailHtml(projectTask)
 }

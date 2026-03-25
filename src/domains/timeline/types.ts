@@ -1,6 +1,6 @@
 // Basic Timeline Item
 export interface TimelineItem {
-  id: number
+  id: number | string
   content: string
   start: string
   end?: string
@@ -48,5 +48,5 @@ export interface TimelineProject {
 // Transformed for Timeline
 export interface TransformedTimelineData {
   items: TimelineItem[]
-  groups: Array<{ id: number; content: string; title?: string }>
+  groups: Array<{ id: number | string; content: string; title?: string }>
 }
