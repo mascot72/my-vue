@@ -1,365 +1,461 @@
-<!--
-Main Page - Roadmap 조회 화면
-같은 방법으로 코드를 refactory해주고 전체 코드를 알려줘!
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import TimelineRoadmap from '@/domains/timeline/components/Roadmap/TimelineRoadmap.vue'
+import { useTimelineProjectData } from '@/domains/timeline/composables/useTimelineProjectData'
 
-지금 알려준 템플릿 Item용과 ,Group용을 별도의 파일로 분리해서 import해서 변수 형태로 받아 처리하도록 기능을 나눠주고, 로직과 UI부분을 효율적인 best pratice 형태로 나눠서 전체 기능을 개선하고 HTML방식으로 전체 파일별 전체 코드로 알려줘
--->
+type StatusFilter = 'all' | 'planning' | 'in-progress' | 'completed' | 'on-hold'
+type PriorityFilter = 'all' | 'low' | 'medium' | 'high' | 'critical'
+type ViewMode = 'month' | 'quarter'
 
-<template>
-  <dxplm-grid-page :title="$msg('tes.roadmap-view-screentitle', '로드맵 조회')">
-    <!-- 화면 Action 버튼-->
-    <template #title-action>
-      <dxplm-button large>
-        <dxplm-label message="cmm.submit-approval-button" text="결재상신"
-      /></dxplm-button>
-      <!-- <dxplm-button large @click="addTechItem">
-        <dxplm-label message="tes.compare-roadmap-button" text="로드맵 비교"
-      /></dxplm-button> -->
-      <dxplm-button large
-        ><dxplm-label message="tes.request-create-roadmap-button" text="로드맵 작성요청"
-      /></dxplm-button>
-      <div class="button-layer-wrap">
-        <dxplm-button
-          ref="toggleButtonAdmin"
-          primary
-          solid
-          large
-          @click="toggleAdmin"
-          :disabled="!store.selectedRoadId"
-        >
-          <dxplm-label message="cmm.register-button" text="등록" />
-          <!-- <span class="mr-4">register-button</span> -->
-          <dxplm-icon
-            v-dxplm-tooltip="
-              !isVisibleAdmin
-                ? $msg('cmm.expand-button', '펼치기')
-                : $msg('cmm.collapse-button', '접기')
-            "
-            type="line"
-            icon="arrow_down_sm"
-            :class="{ deg180: isVisibleAdmin }"
-          />
-        </dxplm-button>
-        <div v-if="isVisibleAdmin" ref="targetAdmin" class="button-layer">
-          <dxplm-button
-            primary
-            solid
-            large
-            :disabled="!(store.selectedRoadId && store.roadmapType === 'PRM')"
-            @click="handleClickCreateRoadmapItem"
-            ><dxplm-label message="tes.product-item-registration-screentitle" text="제품 Item 등록"
-          /></dxplm-button>
-          <dxplm-button
-            primary
-            solid
-            large
-            @click="handleClickCreateRoadmapItem"
-            :disabled="
-              !(
-                store.selectedRoadId &&
-                (store.roadmapType === 'TRM' || store.roadmapType === 'CMM')
-              )
-            "
-            ><dxplm-label message="tes.required-tech-registration-screentitle" text="필요기술 등록"
-          /></dxplm-button>
-          <dxplm-button primary solid large @click="closeLayerAdmin" disabled="true"
-            ><dxplm-label
-              message="tes.roadmap-pjt-plan-registration-screentitle"
-              text="로드맵 과제 계획 등록"
-          /></dxplm-button>
-        </div>
-      </div>
-    </template>
-    <!-- 검색 박스 -->
-    <dxplm-search-box
-      label-size="130px"
-      column="4"
-      @search="changedLoadmapType({ isMounted: false })"
-      @reset="onReset"
-    >
-      <dxplm-search-row>
-        <dxplm-search-item :label="msg('cmm.organization-label', '조직')" class="search-treearea">
-          <dxplm-select
-            v-model="search.organizations"
-            :placeholder="msg('tes.entire-organization-label', '전체조직')"
-            multiple
-            max-tag-count="responsive"
-            :options="roadmapOrganizationOptions"
-          />
-        </dxplm-search-item>
-        <dxplm-search-item :label="msg('tes.roadmap-class-label', '로드맵 구분')">
-          <dxplm-select
-            v-model="store.roadmapType"
-            dd-code="TES.ROADMAP_TYPE"
-            :placeholder="msg('cmm.optional-domain', '선택')"
-            :disabled="true"
-          />
-        </dxplm-search-item>
-        <dxplm-search-item :label="msg('bom.progress-status-label', '진행상태')">
-          <dxplm-select
-            v-model="search.statusCode"
-            dd-code="TES.ROAD_STATUS"
-            :placeholder="msg('cmm.optional-domain', '선택')"
-          />
-        </dxplm-search-item>
+const {
+  loading,
+  error,
+  items,
+  groups,
+  selectedTaskDetail,
+  selectedTaskDetailHtml,
+  loadProject,
+  selectTask,
+  clearSelection,
+  getProgressStats,
+} = useTimelineProjectData()
 
-        <dxplm-search-item>
-          <dxplm-checkbox v-model="isHideMode"> 항목있는 레벨만 </dxplm-checkbox>
-        </dxplm-search-item>
-      </dxplm-search-row>
-      <!-- 접고 펼쳐지는 영역 -->
-      <template #expandable-zone>
-        <dxplm-search-row v-if="store.roadmapType === 'PRM'">
-          <dxplm-search-item :label="msg('cmm.en-oem-label', 'OEM')">
-            <dxplm-master-customer
-              v-model="search.oem"
-              :placeholder="$msg('cmm.en-oem-label', 'OEM')"
-              class="width-125"
-            />
-          </dxplm-search-item>
+const searchText = ref('')
+const selectedGroupId = ref('all')
+const statusFilter = ref<StatusFilter>('all')
+const priorityFilter = ref<PriorityFilter>('all')
+const hideCompleted = ref(false)
+const viewMode = ref<ViewMode>('month')
+const activeItemId = ref<number | null>(null)
 
-          <dxplm-search-item :label="msg('cmm.vehicle-type-label', '차종')">
-            <dxplm-master-vehicle
-              v-model="search.vehicle"
-              :placeholder="$msg('cmm.vehicle-type-label', '차종')"
-              class="width-125"
-            />
-          </dxplm-search-item>
-        </dxplm-search-row>
+const stripHtml = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
-        <dxplm-search-row v-else>
-          <dxplm-search-item :label="$msg('tes.tech-class-large-label', '기술분류(대)')">
-            <dxplm-master-product v-model="search.technologyClassLvl1Id" :level="1" />
-          </dxplm-search-item>
-          <dxplm-search-item :label="$msg('tes.tech-class-medium-label', '기술분류(중)')">
-            <dxplm-master-product
-              v-model="search.technologyClassLvl2Id"
-              :level="2"
-              :parentId="search.technologyClassLvl1Id"
-            />
-          </dxplm-search-item>
-          <dxplm-search-item :label="$msg('tes.tech-class-small-label', '기술분류(소)')">
-            <dxplm-master-product
-              v-model="search.technologyClassLvl3Id"
-              :level="3"
-              :parentId="search.technologyClassLvl2Id"
-            />
-          </dxplm-search-item>
-        </dxplm-search-row>
-        <dxplm-search-row>
-          <dxplm-search-item
-            v-if="store.roadmapType === 'PRM'"
-            :label="msg('tes.mp-plan-month-input-label', '양산계획월 입력')"
-          >
-            <dxplm-date-picker v-model="search.sopPlanMonth" type="month" is-string-value />
-          </dxplm-search-item>
-
-          <dxplm-search-item :label="msg('tes.plan-dev-start-month-label', '개발착수 계획월')">
-            <dxplm-date-picker v-model="search.startMonth" type="month" is-string-value />
-          </dxplm-search-item>
-
-          <dxplm-search-item :label="msg('tes.plan-dev-completion-month-label', '개발완료 계획월')">
-            <dxplm-date-picker v-model="search.endMonth" type="month" is-string-value />
-          </dxplm-search-item>
-        </dxplm-search-row>
-      </template>
-    </dxplm-search-box>
-
-    <!-- 로드맵 -->
-    <dxplm-box>
-      <TimelineRoadmap
-        ref="timelineCompRef"
-        :item-arr="store.items"
-        :group-arr="store.groups"
-        :hide-empty-groups="isHideMode"
-        @open-detail-slide="activateSlide"
-        @changed-loadmap-type="changedLoadmapType"
-        @roadmap-create="onRoadmapCreate"
-      />
-    </dxplm-box>
-
-    <ErmmItemDetailSlide ref="detailSlideRef" />
-    <ProductItemCreateModal ref="productItemCreateModal" />
-    <ProductItemUpdateSlide
-      ref="productItemUpdateSlide"
-      v-model:product-item-data="productItemData"
-    />
-    <RequiredTechCreateModal ref="requiredTechCreateModal" />
-    <RequiredTechUpdateSlide
-      ref="requiredTechUpdateSlide"
-      v-model:required-tech-data="requiredTechData"
-    />
-  </dxplm-grid-page>
-</template>
-<script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useTimelineStore } from '../store/timeline.store'
-import { useI18n } from '@/modules/core/composables/useI18n'
-import ProductItemCreateModal from '@/modules/tes/ermm/components/modal/productItem/ProductItemCreateModal.vue'
-import RequiredTechCreateModal from '@/modules/tes/ermm/components/modal/requiredTech/RequiredTechCreateModal.vue'
-import ErmmItemDetailSlide from '../components/ErmmItemDetailSlide.vue'
-import TimelineRoadmap from '@/domains/timeline/components/TimelineRoadmap.vue'
-import ProductItemUpdateSlide from '@/modules/tes/ermm/components/modal/productItem/ProductItemUpdateSlide.vue'
-import RequiredTechUpdateSlide from '@/modules/tes/ermm/components/modal/requiredTech/RequiredTechUpdateSlide.vue'
-
-const { msg } = useI18n()
-const productItemData = ref(null)
-const requiredTechData = ref(null)
-const isHideMode = ref(false)
-const timelineCompRef = ref(null) // TimelineRoadmap 컴포넌트 참조
-const detailSlideRef = ref(null) // 상세조회 슬라이드 관련
-const requiredTechCreateModal = ref(null)
-const requiredTechUpdateSlide = ref(null)
-const productItemCreateModal = ref(null)
-const productItemUpdateSlide = ref(null)
-const store = useTimelineStore()
-const toggleButtonAdmin = ref(null)
-const targetAdmin = ref(null)
-const isVisibleAdmin = ref(false)
-
-function toggleAdmin() {
-  isVisible.value = false
-
-  isVisibleAdmin.value = !isVisibleAdmin.value
-}
-
-function closeLayerAdmin() {
-  isVisibleAdmin.value = false
-}
-
-const isVisible = ref(false)
-const search = ref({
-  organizations: [],
-  roadmapType: '',
-  statusCode: '',
-  text: '',
-  oem: null,
-  vehicle: null,
-  status: null,
-  concept: null,
-  function: null,
-  sopPlanMonth: null,
-  startMonth: null,
-  endMonth: null,
-  technologyClassLvl1Id: null,
-  technologyClassLvl2Id: null,
-  technologyClassLvl3Id: null,
-  statusTech: null,
-  functionTech: null,
-  startDateTech: null,
-  completeDateTech: null,
-})
-
-// 로드맵 조직 그룹 마스터
-const roadmapOrganizationOptions = computed(() =>
-  store.orgGroups.map((group) => ({
-    label: group.content,
-    value: group.id,
+const groupOptions = computed(() =>
+  groups.value.map((group) => ({
+    value: String(group.id),
+    label: stripHtml(String(group.content ?? group.title ?? group.id)),
   })),
 )
 
-function onReset() {
-  Object.keys(search.value).forEach((key) => {
-    search.value[key] = Array.isArray(search.value[key]) ? [] : null
+const filteredItems = computed(() => {
+  const keyword = searchText.value.trim().toLowerCase()
+
+  return items.value.filter((item) => {
+    const text = `${item.title ?? ''} ${stripHtml(String(item.content ?? ''))}`.toLowerCase()
+    const matchesKeyword = keyword.length === 0 || text.includes(keyword)
+    const matchesGroup = selectedGroupId.value === 'all' || String(item.group) === selectedGroupId.value
+    const matchesStatus =
+      statusFilter.value === 'all' || item.className?.includes(`status-${statusFilter.value}`)
+    const matchesPriority =
+      priorityFilter.value === 'all' || item.className?.includes(`priority-${priorityFilter.value}`)
+    const matchesCompleted = !hideCompleted.value || !item.className?.includes('status-completed')
+
+    return matchesKeyword && matchesGroup && matchesStatus && matchesPriority && matchesCompleted
   })
-}
-
-function activateSlide(data) {
-  if (store.roadmapType === 'PRM') {
-    // 제품정보 상세
-    productItemData.value = {
-      id: data.id,
-      name: data.title,
-      roadId: data.roadId,
-    }
-
-    productItemUpdateSlide.value?.activate('right')
-  } else {
-    // 기술분류|공통기술 필요기술 상세
-    requiredTechData.value = {
-      id: data.id,
-      name: data.title,
-      roadId: data.roadId,
-    }
-
-    requiredTechUpdateSlide.value?.activate('right')
-  }
-}
-
-function onSaveSuccessful(data) {
-  console.log('등록완료', data)
-}
-
-// 제품Item 또는 필요기술 등록
-
-function handleClickCreateRoadmapItem() {
-  if (store.selectedRoadId) {
-    if (store.roadmapType === 'PRM') {
-      productItemCreateModal.value.openModal(
-        store.selectedRoadId,
-
-        onSaveSuccessful,
-      )
-    } else {
-      requiredTechCreateModal.value.openModal(store.selectedRoadId)
-    }
-
-    store.selectedRoadId = null
-
-    closeLayerAdmin()
-  }
-}
-
-// Timeline에서 선택 취소
-const onRoadmapCreate = () => {
-  closeLayerAdmin() // 등록버튼 닫기
-}
-
-// search
-async function changedLoadmapType({ isMounted }) {
-  const payload = {
-    statusCode: search.value.statusCode,
-    customerCode: search.value.oem,
-    vehicleTypeCode: search.value.vehicle,
-    sopPlanMonth: search.value.sopPlanMonth,
-    technologyClassLvl1Id: search.value.technologyClassLvl1Id,
-    technologyClassLvl2Id: search.value.technologyClassLvl2Id,
-    technologyClassLvl3Id: search.value.technologyClassLvl3Id,
-    devStartPlanMonth: search.value.startMonth,
-    devEndPlanMonth: search.value.endMonth,
-    roadmapType: store.roadmapType,
-    parentId: '',
-    orgGroupIds: search.value.organizations,
-  }
-
-  await store.loadGroups(payload)
-
-  if (!isMounted) {
-    await store.loadItems({ ...payload, page: false })
-  }
-}
-
-// [E] 초기 실행
-onMounted(async () => {
-  store.roadmapType = 'PRM'
-  await changedLoadmapType({ isMounted: false })
 })
 
-onUnmounted(() => {
-  store.reset()
+const filteredGroups = computed(() => {
+  const visibleGroupIds = new Set(filteredItems.value.map((item) => String(item.group)))
+  return groups.value.filter((group) => visibleGroupIds.has(String(group.id)))
+})
+
+const stats = computed(() => getProgressStats())
+const visibleCount = computed(() => filteredItems.value.length)
+const totalCount = computed(() => items.value.length)
+
+const summaryCards = computed(() => [
+  { label: '전체 작업', value: totalCount.value, tone: 'slate' },
+  { label: '현재 표시', value: visibleCount.value, tone: 'blue' },
+  { label: '진행 중', value: stats.value.inProgress, tone: 'indigo' },
+  { label: '완료', value: stats.value.completed, tone: 'green' },
+])
+
+const resetFilters = () => {
+  searchText.value = ''
+  selectedGroupId.value = 'all'
+  statusFilter.value = 'all'
+  priorityFilter.value = 'all'
+  hideCompleted.value = false
+}
+
+const handleSelectItem = async (itemId: string) => {
+  const nextId = Number(itemId)
+  if (Number.isNaN(nextId)) return
+
+  activeItemId.value = nextId
+  await selectTask(nextId)
+}
+
+const handleClearSelection = () => {
+  activeItemId.value = null
+  clearSelection()
+}
+
+watch(filteredItems, (nextItems) => {
+  if (!activeItemId.value) return
+
+  const exists = nextItems.some((item) => Number(item.id) === activeItemId.value)
+  if (!exists) {
+    handleClearSelection()
+  }
+})
+
+onMounted(async () => {
+  await loadProject()
 })
 </script>
 
-<style lang="scss" scoped>
-.width-125 {
-  flex: 1 0 125px !important;
+<template>
+  <div class="roadmap-page">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Roadmap</p>
+        <h1>Roadmap Timeline</h1>
+        <p class="description">vis-timeline 기반 로드맵 화면을 현재 프로젝트 구조에 맞게 다시 연결했습니다.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="ghost-button" @click="resetFilters">필터 초기화</button>
+      </div>
+    </header>
 
-  ::v-deep(.n-select) {
-    width: 125px;
+    <section class="summary-grid">
+      <article v-for="card in summaryCards" :key="card.label" class="summary-card" :data-tone="card.tone">
+        <span class="summary-label">{{ card.label }}</span>
+        <strong class="summary-value">{{ card.value }}</strong>
+      </article>
+    </section>
+
+    <section class="filter-panel">
+      <label class="field wide">
+        <span>검색</span>
+        <input v-model="searchText" type="text" placeholder="작업명 또는 설명 검색" />
+      </label>
+
+      <label class="field">
+        <span>그룹</span>
+        <select v-model="selectedGroupId">
+          <option value="all">전체</option>
+          <option v-for="group in groupOptions" :key="group.value" :value="group.value">
+            {{ group.label }}
+          </option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>상태</span>
+        <select v-model="statusFilter">
+          <option value="all">전체</option>
+          <option value="planning">Planning</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="on-hold">On Hold</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>우선순위</span>
+        <select v-model="priorityFilter">
+          <option value="all">전체</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </label>
+
+      <label class="checkbox-field">
+        <input v-model="hideCompleted" type="checkbox" />
+        <span>완료 항목 숨기기</span>
+      </label>
+    </section>
+
+    <div v-if="error" class="feedback error">{{ error }}</div>
+    <div v-else-if="loading" class="feedback">로드맵 데이터를 불러오는 중입니다...</div>
+
+    <section v-else class="content-grid">
+      <div class="timeline-panel">
+        <TimelineRoadmap
+          :items="filteredItems"
+          :groups="filteredGroups"
+          :view-mode="viewMode"
+          :selected-item-id="activeItemId ? String(activeItemId) : null"
+          @update:view-mode="viewMode = $event"
+          @select-item="handleSelectItem"
+          @clear-selection="handleClearSelection"
+        />
+      </div>
+
+      <aside class="details-panel">
+        <div class="details-header">
+          <div>
+            <p class="eyebrow">Details</p>
+            <h2>선택 항목 정보</h2>
+          </div>
+          <button
+            v-if="selectedTaskDetail"
+            type="button"
+            class="ghost-button small"
+            @click="handleClearSelection"
+          >
+            선택 해제
+          </button>
+        </div>
+
+        <div v-if="selectedTaskDetailHtml" class="details-body" v-html="selectedTaskDetailHtml"></div>
+        <div v-else class="empty-state">
+          <strong>항목을 선택해 주세요.</strong>
+          <p>타임라인 카드 클릭 시 상세 정보를 오른쪽 패널에서 확인할 수 있습니다.</p>
+        </div>
+      </aside>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.roadmap-page {
+  min-height: 100%;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.page-header,
+.summary-card,
+.filter-panel,
+.timeline-panel,
+.details-panel,
+.feedback {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  border-radius: 24px;
+  padding: 24px 28px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-header h1,
+.details-header h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.description {
+  margin: 8px 0 0;
+  color: #475569;
+  max-width: 720px;
+  line-height: 1.6;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.summary-card {
+  border-radius: 20px;
+  padding: 18px 20px;
+}
+
+.summary-card[data-tone='blue'] {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.summary-card[data-tone='indigo'] {
+  border-color: rgba(79, 70, 229, 0.2);
+}
+
+.summary-card[data-tone='green'] {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.summary-label {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.summary-value {
+  font-size: 28px;
+  color: #0f172a;
+}
+
+.filter-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(160px, 1fr)) auto;
+  gap: 16px;
+  margin-top: 20px;
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.field,
+.checkbox-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field span,
+.checkbox-field span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input,
+.field select {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #0f172a;
+}
+
+.checkbox-field {
+  justify-content: flex-end;
+  flex-direction: row;
+  align-items: center;
+  padding-top: 28px;
+}
+
+.feedback {
+  margin-top: 20px;
+  border-radius: 20px;
+  padding: 18px 20px;
+  color: #334155;
+}
+
+.feedback.error {
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 420px);
+  gap: 20px;
+  margin-top: 20px;
+  min-height: 680px;
+}
+
+.timeline-panel,
+.details-panel {
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.timeline-panel {
+  min-height: 680px;
+}
+
+.details-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.details-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 8px;
+  color: #64748b;
+  min-height: 240px;
+  padding: 24px;
+}
+
+.ghost-button {
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: white;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ghost-button.small {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.ghost-button:hover {
+  background: #f8fafc;
+}
+
+@media (max-width: 1200px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .checkbox-field {
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-.dxplm-box {
-  margin-top: 0 !important;
+@media (max-width: 768px) {
+  .roadmap-page {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+
+  .summary-grid,
+  .filter-panel {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

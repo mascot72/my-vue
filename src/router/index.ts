@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
+import RoadmapView from '@/pages/RoadmapView.vue'
 import TimelinePage from '@/pages/TimelinePage.vue'
 import TimelineExamplesPage from '@/pages/TimelineExamplesPage.vue'
 import TimelineEnhancedPage from '@/pages/TimelineEnhancedPage.vue'
@@ -34,6 +35,11 @@ const router = createRouter({
       path: '/timeline-enhanced',
       name: 'timeline-enhanced',
       component: TimelineEnhancedPage,
+    },
+    {
+      path: '/roadmap',
+      name: 'roadmap',
+      component: RoadmapView,
     },
   ],
 })

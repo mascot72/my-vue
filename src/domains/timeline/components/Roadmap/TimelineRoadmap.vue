@@ -1,303 +1,276 @@
-<!-- ErmmVimelineRoadmap.vue
-전체 구조를 개선해서 전체 코드로 알려줘! -->
+<script setup lang="ts">
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { TimelineGroup } from 'vis-timeline'
+import TimelineView from '@/domains/timeline/components/TimelineView.vue'
+import type { TimelineItem } from '@/domains/timeline/types'
 
-<template>
-  <div class="roadmap-wrapper">
+type ViewMode = 'month' | 'quarter'
 
-    <ErmmVisTimeline ref="timelineRef" :all-items="allItems" :options="options" :groups="groups"
-      :view-status="{ statusPlan, statusExec, statusNBiz }" :view-mode="viewMode" :hide-empty-groups="hideEmptyGroups"
-      @open-detail-slide="onDetailView" @zoom-state-change="onZoomStateChange" @roadmap-create="onRoadmapCreate" />
-
-    <div class="roadmap-tree">
-      <div class="roadmap-tree-row">
-        <div class="flex align-items-center horizontal">
-          <span class="roadmap-tree-title"><dxplm-label message="tes.roadmap-tree-label" text="로드맵 Tree" /></span>
-          <dxplm-icon-button type="line" icon="collapse_menu" borderless @click="toggleAllGroups(false)" />
-          <dxplm-icon-button type="line" icon="expand_menu" borderless @click="toggleAllGroups(true)" />
-          <dxplm-icon-button type="line" icon="reset" borderless />
-        </div>
-        <dxplm-button v-if="flag % 3 === 0" small class="view-mode step-1" @click="changeItemMode(false)">
-          <dxplm-label message="cmm.product-group-label" text="제품군" />
-        </dxplm-button>
-        <dxplm-button v-else-if="flag % 3 === 1" small class="view-mode step-2" @click="changeItemMode(false)">
-          <dxplm-label message="tes.tech-class-system-label" text="기술분류체계" />
-        </dxplm-button>
-        <dxplm-button v-else small class="view-mode step-3" @click="changeItemMode(false)">
-          <dxplm-label message="tes.common-tech-types-label" text="공통기술유형" />
-        </dxplm-button>
-      </div>
-    </div>
-    <div class="roadmap-toolbar">
-      <!-- tool 그룹 -->
-      <ul class="roadmap-toolbar-lists tool">
-        <li v-for="(item, index) in toolItems" :key="index" :class="[
-          'roadmap-toolbar-list',
-          { active: activeIndexes.includes(index) },
-        ]">
-          <dxplm-icon-button type="line" :icon="item.icon" @click="handleClick(index, item.handler)" />
-          <dxplm-tooltip hover left>{{ item.label }}</dxplm-tooltip>
-        </li>
-      </ul>
-      <ul class="roadmap-toolbar-lists">
-        <!-- today 버튼 -->
-        <li class="roadmap-toolbar-list today">
-          <dxplm-icon-button type="line" icon="target" @click="moveToToday" />
-          <dxplm-tooltip hover left><dxplm-label message="cmm.en-today-button" text="Today" /></dxplm-tooltip>
-        </li>
-
-        <!-- 월/분기 버튼 -->
-        <li :class="[
-          'roadmap-toolbar-list',
-          {
-            month: viewMode === viewModes[0],
-            quarter: viewMode === viewModes[1],
-          },
-        ]">
-          <dxplm-icon-button type="line" icon="calendar" @click="changeViewMode()" />
-          <dxplm-tooltip hover left>{{
-            viewMode === viewModes[0] ? msg('tes.month-view-label', '월 보기') : msg('gpm.quarterly-view-label', '분기 보기')
-            }}</dxplm-tooltip>
-        </li>
-      </ul>
-
-      <!-- zoom 그룹 -->
-      <ul class="roadmap-toolbar-lists zoom">
-        <li v-for="(item, index) in zoomItems" :key="index" class="roadmap-toolbar-list">
-          <dxplm-icon-button type="line" :icon="item.icon" @click="handleZoom(item.action)" />
-          <dxplm-tooltip hover left>{{ item.label }}</dxplm-tooltip>
-        </li>
-      </ul>
-    </div>
-  </div>
-</template>
-<script setup>
-import { computed, ref, toRaw, watch, onBeforeMount, inject } from "vue";
-import ErmmVisTimeline from "./ErmmVisTimeline.vue";
-import { useMasterdata } from "@/modules/tes/ermm/composables/useMasterdata.ts";
-import { useTimelineStore } from "../store/timeline.store";
-
-const viewModes = ["QUARTER", "MONTH"];
-const props = defineProps({
-  itemArr: { type: Array, default: () => [] },
-  groupArr: { type: Array, default: () => [] },
-  hideEmptyGroups: { type: Boolean, default: false },
-  // allItems: { type: Array, default: () => [] },
-  // groups: { type: Array, default: () => [] },
-});
-
-// vis-timeline 옵션 설정
-const options = ref({
-  orientation: "top",
-  horizontalScroll: true,
-  verticalScroll: true,
-});
-
-const allItems = ref([]);
-const groups = ref([]);
-const store = useTimelineStore();
-
-const emit = defineEmits(["open-detail-slide", "changedLoadmapType", 'roadmap-create']);
-const { loadedMasterdata, getMasterdatas, getTechClassificationName } = useMasterdata();
-
-onBeforeMount(async () => {
-  if (!loadedMasterdata.value) await getMasterdatas();
-});
-
-watch(
-  () => props.groupArr,
-  (newVal) => {
-    groups.value = newVal;
-  },
-  { immediate: true },
-);
-
-watch(
-  () => props.itemArr,
-  (newVal) => {
-    const newItems = newVal?.map((item) => ({
-      ...item,
-      technologyClassLv1Name: getTechClassificationName(item.technologyClassLv1Id),
-      technologyClassLv2Name: getTechClassificationName(item.technologyClassLv2Id),
-      technologyClassLv3Name: getTechClassificationName(item.technologyClassLv3Id),
-    }));
-    allItems.value = newItems ? structuredClone(toRaw(newItems)) : [];
-  },
-  { immediate: true },
-);
-
-const viewMode = ref(viewModes[0]);
-const timelineRef = ref(null);
-const msg = inject("$msg");
-const flag = ref(0); //로드맵Tree 우측 3단버튼(?)
-const statusPlan = ref(false); //과제계획 수립현황 선택여부
-const statusExec = ref(false); //과제실행 현황조회 선택여부
-const statusNBiz = ref(false); //최적개발 Site 선정협의 선택여부
-const activeIndexes = ref([0]);
-function toggleActive(index) {
-  if (index === 0) return;
-  if (activeIndexes.value.includes(index)) {
-    activeIndexes.value = activeIndexes.value.filter((i) => i !== index);
-  } else {
-    activeIndexes.value.push(index);
-  }
-}
-
-function showOrgTree() {
-  console.log("view Ogrganization Tree");
-}
-
-function showStatusEstablishing() {
-  statusPlan.value = !statusPlan.value;
-
-  if (statusPlan.value) {
-    statusNBiz.value = false;
-    activeIndexes.value = activeIndexes.value.filter((i) => i !== 4);
-  } else {
-    statusExec.value = false;
-    activeIndexes.value = activeIndexes.value.filter((i) => i !== 2);
-  }
-
-  console.log("Project Plan Establishing Status");
-}
-
-function viewPjt() {
-  statusExec.value = !statusExec.value;
-  if (statusExec.value) {
-    if (!statusPlan.value) {
-      statusPlan.value = true;
-      if (!activeIndexes.value.includes(1)) {
-        activeIndexes.value.push(1);
-      }
-    }
-    statusNBiz.value = false;
-    activeIndexes.value = activeIndexes.value.filter((i) => i !== 4);
-  }
-
-  console.log("Project Execution Status");
-}
-
-function reviewCross() {
-  console.log("Cross BU Duplicate Technology Review");
-}
-
-function optimalDevSite() {
-  statusNBiz.value = !statusNBiz.value;
-  if (statusNBiz.value) {
-    statusPlan.value = false;
-    statusExec.value = false;
-    activeIndexes.value = activeIndexes.value.filter((i) => i !== 1 && i !== 2);
-  }
-
-  console.log("Optimal Development Site Negotiation");
-}
-
-function saveSnapshot() {
-  console.log("Snapshot");
-}
-
-function handleClick(index, handler) {
-  toggleActive(index);
-  if (handler) handler();
-}
-
-const toolItems = computed(() => [
-  { icon: "organization_tree", label: msg('cmm.show-organization-button', '조직 보이기'), handler: showOrgTree },
+const props = withDefaults(
+  defineProps<{
+    items: TimelineItem[]
+    groups: TimelineGroup[]
+    viewMode?: ViewMode
+    selectedItemId?: string | null
+  }>(),
   {
-    icon: "monitor_screen",
-    label: msg('tes.status-establishing-pjt-plan-button', '과제계획 수립현황'),
-    handler: showStatusEstablishing,
+    viewMode: 'month',
+    selectedItemId: null,
   },
-  { icon: "file_search", label: msg('tes.view-pjt-execution-status-button', '과제실행 현황조회'), handler: viewPjt },
-  { icon: "tools", label: msg('tes.review-cross-bu-tech-button', 'Cross BU 중복기술 검토'), handler: reviewCross },
-  {
-    icon: "document_badge",
-    label: msg('tes.optimal-dev-site-negotiation-screentitle', '최적 개발 Site 선정 협의'),
-    handler: optimalDevSite,
-  },
-  { icon: "camera_snapshot", label: "Snapshot", handler: saveSnapshot },
-  { icon: "arrow_expand", label: msg('tes.big-screen-mode-button', '대화면 모드') },
-]);
+)
 
-const zoomItems = computed(() => [
-  { icon: "roadmap_plus", label: msg('tes.en-zoom-in-button', 'Zoom in'), action: "zoomIn" },
-  { icon: "roadmap_minus", label: msg('tes.en-zoom-out-button', 'Zoom out'), action: "zoomOut" },
-]);
+const emit = defineEmits<{
+  'update:viewMode': [value: ViewMode]
+  'select-item': [itemId: string]
+  'clear-selection': []
+}>()
 
-const zoomState = ref({ canZoomIn: true, canZoomOut: true });
-const onZoomStateChange = (state) => {
-  zoomState.value = state;
-};
+const timelineViewRef = ref<InstanceType<typeof TimelineView> | null>(null)
 
-const onDetailView = (data) => {
-  emit("open-detail-slide", data);
-};
+const modeLabel = computed(() => (props.viewMode === 'month' ? '월 보기' : '분기 보기'))
+const groupCount = computed(() => props.groups.length)
+const itemCount = computed(() => props.items.length)
 
-const onRoadmapCreate = (id) => {
-  emit("roadmap-create", id);
-};
+const getTimelineApi = () => timelineViewRef.value?.getApi()
+
+const buildWindowRange = (mode: ViewMode) => {
+  const center = new Date()
+  const offset = mode === 'month' ? 6 : 12
+  const start = new Date(center.getFullYear(), center.getMonth() - offset, 1)
+  const end = new Date(center.getFullYear(), center.getMonth() + offset, 1)
+  return { start, end }
+}
+
+const applyViewMode = async (mode: ViewMode) => {
+  await nextTick()
+  const api = getTimelineApi()
+  if (!api) return
+
+  const { start, end } = buildWindowRange(mode)
+
+  api.setOptions({
+    orientation: 'top',
+    timeAxis: {
+      scale: 'month',
+      step: mode === 'month' ? 1 : 3,
+    },
+    start,
+    end,
+    min: new Date(start.getFullYear() - 1, start.getMonth(), 1),
+    max: new Date(end.getFullYear() + 1, end.getMonth(), 1),
+  })
+}
+
+const fitTimeline = async () => {
+  await nextTick()
+  if (!props.items.length) return
+  getTimelineApi()?.fit()
+}
 
 const moveToToday = () => {
-  const timeline = timelineRef.value?.timeline;
+  getTimelineApi()?.moveTo(new Date(), { animation: true })
+}
 
-  if (timeline) {
-    timeline.moveTo(new Date());
-  }
-};
+const zoomIn = () => {
+  getTimelineApi()?.zoomIn(0.2)
+}
 
-// const moveToItem = (itemId) => {
-//   const timeline = timelineRef.value?.timeline;
-//   if (timeline) {
-//     // 기본 이동 (애니메이션 포함)
-//     timeline.focus(itemId);
-//   }
-// };
+const zoomOut = () => {
+  getTimelineApi()?.zoomOut(0.2)
+}
 
-const zoomPercentage = 0.2;
-const handleZoom = (action) => {
-  const timeline = timelineRef.value?.timeline;
-  if (!timeline) return;
+const toggleViewMode = () => {
+  emit('update:viewMode', props.viewMode === 'month' ? 'quarter' : 'month')
+}
 
-  if (action === "zoomIn") {
-    timeline.zoomIn(zoomPercentage);
-  } else if (action === "zoomOut") {
-    timeline.zoomOut(zoomPercentage);
-  }
-};
+const clearSelection = () => {
+  getTimelineApi()?.setSelection([])
+  emit('clear-selection')
+}
 
-const changeViewMode = () => {
-  const modeIdx = (viewModes.indexOf(viewMode.value) + 1) % 2;
-  viewMode.value = viewModes[modeIdx | 0];
-};
+const handleItemClick = (itemId: string) => {
+  getTimelineApi()?.setSelection([itemId])
+  getTimelineApi()?.focus(itemId)
+  emit('select-item', itemId)
+}
 
-const changeItemMode = (isReload = false) => {
-  if (!isReload) {
-    flag.value = ++flag.value % 3;
-    const roadmapType = ["PRM", "TRM", "CMM"][flag.value % 3];
-    store.roadmapType = roadmapType;
-    emit("changedLoadmapType", { isMounted: true });
-    store.selectedRoadId = null; // 등록기능은 초기화
-    emit("roadmap-create", null); // 등록기능은 초기화
-  }
-};
+watch(
+  () => props.viewMode,
+  (mode) => {
+    applyViewMode(mode)
+  },
+  { immediate: true },
+)
 
-const toggleAllGroups = (show) => {
-  timelineRef.value?.toggleAllGroups(show);
-};
+watch(
+  () => props.items,
+  () => {
+    fitTimeline()
+  },
+  { deep: true },
+)
 
-defineExpose({
-  timelineRef,
-  // moveToItem,
-});
+watch(
+  () => props.selectedItemId,
+  async (itemId) => {
+    await nextTick()
+    const api = getTimelineApi()
+    if (!api) return
+
+    if (!itemId) {
+      api.setSelection([])
+      return
+    }
+
+    api.setSelection([itemId])
+    api.focus(itemId)
+  },
+  { immediate: true },
+)
+
+onMounted(async () => {
+  await applyViewMode(props.viewMode)
+  await fitTimeline()
+})
 </script>
-<style scoped lang="scss">
+
+<template>
+  <section class="roadmap-wrapper">
+    <header class="toolbar">
+      <div class="toolbar-title">
+        <p class="eyebrow">Interactive Timeline</p>
+        <h2>로드맵 보기</h2>
+        <span class="meta">그룹 {{ groupCount }} · 작업 {{ itemCount }}</span>
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="button" class="toolbar-button" @click="moveToToday">Today</button>
+        <button type="button" class="toolbar-button" @click="fitTimeline">Fit</button>
+        <button type="button" class="toolbar-button" @click="toggleViewMode">{{ modeLabel }}</button>
+        <button type="button" class="toolbar-button" @click="zoomIn">+</button>
+        <button type="button" class="toolbar-button" @click="zoomOut">−</button>
+        <button type="button" class="toolbar-button danger" @click="clearSelection">Clear</button>
+      </div>
+    </header>
+
+    <div class="timeline-surface">
+      <TimelineView
+        ref="timelineViewRef"
+        :items="props.items"
+        :groups="props.groups"
+        theme-class="timeline-roadmap-theme"
+        @item-click="handleItemClick"
+      />
+    </div>
+  </section>
+</template>
+
+<style scoped>
 .roadmap-wrapper {
-  height: 100%;
-  width: 100%;
-  /* vis-timeline 중첩 그룹(Nesting Group) 초기 높이 찌그러짐 방지 */
-  :deep(.vis-label.vis-nesting-group) {
-    display: flex;
-    align-items: center;
-    min-height: 52px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 680px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.9));
+}
+
+.toolbar-title h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.meta {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.toolbar-button {
+  min-width: 54px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: white;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toolbar-button:hover {
+  background: #f8fafc;
+}
+
+.toolbar-button.danger {
+  color: #b91c1c;
+}
+
+.timeline-surface {
+  min-height: 0;
+  padding: 18px;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme.vis-timeline) {
+  border: 1px solid #dbe2f0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-panel.vis-left),
+.timeline-surface :deep(.timeline-roadmap-theme .vis-panel.vis-top) {
+  background: #f8fafc;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-labelset .vis-label) {
+  border-color: #e2e8f0;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-item) {
+  border: none;
+  background: transparent;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-item-content) {
+  padding: 0;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-current-time) {
+  width: 3px;
+  background: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-actions {
+    justify-content: flex-start;
   }
 }
 </style>
