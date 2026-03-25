@@ -41,6 +41,7 @@ export const useRoadmapViewModel = () => {
   const hideCompleted = ref(false)
   const viewMode = ref<ViewMode>('month')
   const activeItemId = ref<string | null>(null)
+  const bindAllOnMount = ref(true)
 
   const stripHtml = (value: string) => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
@@ -131,7 +132,17 @@ export const useRoadmapViewModel = () => {
   })
 
   const initialize = async (options: RoadmapInitializeOptions = {}) => {
-    await loadProject({ bindAllOnMount: options.bindAllOnMount ?? true })
+    bindAllOnMount.value = options.bindAllOnMount ?? true
+    await loadProject({ bindAllOnMount: bindAllOnMount.value })
+  }
+
+  const setBindAllOnMount = async (value: boolean) => {
+    if (bindAllOnMount.value === value) return
+
+    bindAllOnMount.value = value
+    selectedGroupId.value = 'all'
+    clearRoadmapSelection()
+    await loadProject({ bindAllOnMount: bindAllOnMount.value })
   }
 
   return {
@@ -148,11 +159,13 @@ export const useRoadmapViewModel = () => {
     statusFilter,
     priorityFilter,
     hideCompleted,
+    bindAllOnMount,
     viewMode,
     activeItemId,
     resetFilters,
     selectRoadmapItem,
     clearRoadmapSelection,
+    setBindAllOnMount,
     initialize,
   }
 }

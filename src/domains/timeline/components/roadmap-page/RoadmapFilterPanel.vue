@@ -11,6 +11,7 @@ defineProps<{
   statusFilter: StatusFilter
   priorityFilter: PriorityFilter
   hideCompleted: boolean
+  bindAllOnMount: boolean
   groupOptions: SelectOption[]
 }>()
 
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   'update:statusFilter': [value: StatusFilter]
   'update:priorityFilter': [value: PriorityFilter]
   'update:hideCompleted': [value: boolean]
+  'update:bindAllOnMount': [value: boolean]
 }>()
 </script>
 
@@ -84,13 +86,22 @@ const emit = defineEmits<{
       />
       <span>완료 항목 숨기기</span>
     </label>
+
+    <label class="checkbox-field bind-mode-field">
+      <input
+        :checked="bindAllOnMount"
+        type="checkbox"
+        @change="emit('update:bindAllOnMount', ($event.target as HTMLInputElement).checked)"
+      />
+      <span>전체 데이터 바인딩</span>
+    </label>
   </section>
 </template>
 
 <style scoped>
 .filter-panel {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(160px, 1fr)) auto;
+  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(160px, 1fr)) auto auto;
   gap: 16px;
   margin-top: 20px;
   border-radius: 24px;
@@ -130,6 +141,10 @@ const emit = defineEmits<{
   flex-direction: row;
   align-items: center;
   padding-top: 28px;
+}
+
+.bind-mode-field {
+  white-space: nowrap;
 }
 
 @media (max-width: 1200px) {

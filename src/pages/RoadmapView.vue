@@ -20,11 +20,13 @@ const {
   statusFilter,
   priorityFilter,
   hideCompleted,
+  bindAllOnMount,
   viewMode,
   activeItemId,
   resetFilters,
   selectRoadmapItem,
   clearRoadmapSelection,
+  setBindAllOnMount,
   initialize,
 } = useRoadmapViewModel()
 
@@ -43,12 +45,14 @@ onMounted(async () => {
       :status-filter="statusFilter"
       :priority-filter="priorityFilter"
       :hide-completed="hideCompleted"
+      :bind-all-on-mount="bindAllOnMount"
       :group-options="groupOptions"
       @update:search-text="searchText = $event"
       @update:selected-group-id="selectedGroupId = $event"
       @update:status-filter="statusFilter = $event"
       @update:priority-filter="priorityFilter = $event"
       @update:hide-completed="hideCompleted = $event"
+      @update:bind-all-on-mount="setBindAllOnMount"
     />
 
     <div v-if="error" class="feedback error">{{ error }}</div>
