@@ -306,6 +306,8 @@ const groups = null;
 let timelineArrows = null;
 const itemsDS = new DataSet([]);
 let groupsDS = new DataSet([]);
+const lazyLoadedProductIds = new Set();
+const inFlightProductFetchMap = new Map();
 // ref는 반응이 뭔가 느림...
 // 반응형 상태 설정 : 이 객체의 내용이 바뀌면, Vue가 그걸 감지해서 화면(UI)도 자동으로 변경하도록 처리 (객체 타입만 사용 가능)
 const timelineState = reactive({
@@ -326,6 +328,104 @@ const contextMenu = ref({
   items: [],
   data: null, // 클릭된 아이템 또는 그룹 데이터
 });
+
+const getCurrentTrmCount = (productItemId) => {
+  const currTrm = itemsDS.get({
+    filter: (item) => item.ptrmType !== "PRM" && item.itemLink === productItemId,
+  });
+  return Array.isArray(currTrm) ? currTrm.length : 0;
+};
+
+const fetchAndAppendTrmItems = async (productItemId) => {
+  if (!productItemId || lazyLoadedProductIds.has(productItemId)) {
+    return;
+  }
+
+  if (inFlightProductFetchMap.has(productItemId)) {
+    return inFlightProductFetchMap.get(productItemId);
+  }
+
+  const selectedItem = itemsDS.get(productItemId);
+  if (!selectedItem || selectedItem.ptrmType !== "PRM") {
+    return;
+  }
+
+  const expectedTrmCount = Number(selectedItem.trmCount || 0);
+  if (expectedTrmCount <= 0) {
+    lazyLoadedProductIds.add(productItemId);
+    return;
+  }
+
+  const currentTrmCount = getCurrentTrmCount(productItemId);
+  if (currentTrmCount >= expectedTrmCount) {
+    lazyLoadedProductIds.add(productItemId);
+    return;
+  }
+
+  const fetchPromise = (async () => {
+    const trmsOfItem = await store.getTrms({
+      roadmapType: store.roadmapType === "PRM" ? "TRM" : "CMM",
+      productItemIds: [productItemId],
+    });
+
+    const trmsResult = trmsOfItem.map((item) => ({
+      ...item,
+      itemLink: item.id,
+    }));
+
+    if (trmsResult.length > 0) {
+      itemsDS.update(trmsResult);
+      timeline.value?.setItems(itemsDS);
+    }
+
+    const updatedTrmCount = getCurrentTrmCount(productItemId);
+    if (updatedTrmCount >= expectedTrmCount) {
+      lazyLoadedProductIds.add(productItemId);
+    }
+  })()
+    .catch((error) => {
+      console.error("[Timeline] lazy TRM fetch failed", error);
+    })
+    .finally(() => {
+      inFlightProductFetchMap.delete(productItemId);
+    });
+
+  inFlightProductFetchMap.set(productItemId, fetchPromise);
+  return fetchPromise;
+};
+
+
+const resetRoadmapSelection = () => {
+  store.selectedRoadId = null;
+  emit("roadmap-create", null);
+};
+
+const handleTimelineItemClick = async (itemId) => {
+  const clickedItem = itemsDS.get(itemId);
+  if (!clickedItem) {
+    resetRoadmapSelection();
+    closeInfoPopup();
+    return;
+  }
+
+  if (clickedItem.ptrmType === "PRM") {
+    await fetchAndAppendTrmItems(clickedItem.id);
+  }
+
+  const roadId = clickedItem.roadId ?? selectedItemData.value?.roadId ?? null;
+  store.selectedRoadId = roadId;
+  emit("roadmap-create", roadId);
+};
+
+const handleTimelineClick = async (eventProps) => {
+  if (eventProps.what !== "item") {
+    resetRoadmapSelection();
+    closeInfoPopup();
+    return;
+  }
+
+  await handleTimelineItemClick(eventProps.item);
+};
 const getItemStatusClass = (itemStatus) => {
   let itemStausClass = null;
   //상태별 class 추가
@@ -828,6 +928,8 @@ const reloadItems = (newAllItems) => {
  */
 const reloadData = async () => {
   if (!timeline.value) return;
+  lazyLoadedProductIds.clear();
+  inFlightProductFetchMap.clear();
   perfLog.start("TOTAL_LOAD");
   perfLog.start("DATA_PROCESS");
   const filteredGroups = getFilteredGroups(props.groups, props.allItems);
@@ -1010,22 +1112,7 @@ onMounted(async () => {
   // 컨텍스트 메뉴 이벤트 핸들링
   timeline.value.on("contextmenu", handleContextMenu);
   // 타임라인 클릭 시 팝업 닫기
-  timeline.value.on("click", (eventProps) => {
-    // group정보를 통해 조직Id 찾기
-    // 로드맵 찾기(OrgGroupMaster - OrgGroupTemplate - RoadmapMaster 연동으로 찾기?)
-    // 로드맵 종류는 현재 Tab기준이므로 알고 있다
-    // 조직이 없으므로 해결해야 함!
-    const clickedGroup = toRaw(props.groups).find((g) => g.id === eventProps.group);
-    console.log("clicked clickedGroup src:", clickedGroup);
-    if (eventProps.what !== "item") {
-      store.selectedRoadId = null;
-      emit("roadmap-create", null);
-      closeInfoPopup();
-    } else {
-      store.selectedRoadId = selectedItemData.value.roadId;
-      emit("roadmap-create", store.selectedRoadId);
-    }
-  });
+  timeline.value.on("click", handleTimelineClick);
   // 타임라인 뷰가 변경(확대/축소/스크롤)될 때 팝업 닫기
   timeline.value.on("rangechange", () => {
     closeInfoPopup();
@@ -1044,41 +1131,7 @@ onMounted(async () => {
     if (contextMenu.value.show) {
       return;
     }
-    /**
-     * lazy loading
-     * todo:
-     * 1. roadmapType이 제품군일 때 필요기술이 존재할 경우
-     * 2. 필요기술 조회 data-fetch 수행
-     * 3. roadmapType에 따라 보여줘야 할 popup 선택
-     * 4. items.add(조회된 필요기술 목록)
-     * 5. 해당 item에 focus()
-     */
-    const selectedItem = itemsDS.get(eventProps.item);
-    if (selectedItem.ptrmType === "PRM") {
-      console.log("selectedItem:", selectedItem);
-      const currTrm = itemsDS.get({
-        filter: (item) => {
-          return item.ptrmType !== "PRM" && item.itemLink === selectedItem.id;
-        },
-      });
-      console.log("currTrm size:", currTrm?.size);
-      // 제품이고 필요기술이 존재하는데 아직 DataSet에 안가져온 경우, data-fetch 수행
-      if (selectedItem.trmCount !== currTrm?.size) {
-        await setTimeout(async () => {
-          const trmsOfItem = await store.getTrms({
-            roadmapType: store.roadmapType === "PRM" ? "TRM" : "CMM",
-            productItemIds: [selectedItem.id],
-          });
-          const trmsResult = trmsOfItem.map((item) => ({
-            ...item,
-            itemLink: item.id,
-          }));
-          console.log("trmsOfItem:", trmsResult);
-          itemsDS.add(trmsResult);
-          timeline.value.setItems(itemsDS);
-        }, 1);
-      }
-    }
+
     if (props.useItemTooltip) {
       closeInfoPopup();
       onItemHoverShowInfoPopup(eventProps);
@@ -1115,6 +1168,8 @@ onMounted(async () => {
   }, 500);
 });
 onBeforeUnmount(() => {
+  lazyLoadedProductIds.clear();
+  inFlightProductFetchMap.clear();
   const leftPanel = timelineRef.value?.querySelector(".vis-panel.vis-left");
   if (leftPanel) {
     toggleHandlerEvents.forEach((evt) => {
