@@ -50,6 +50,8 @@ const applyViewMode = async (mode: ViewMode) => {
 
   api.setOptions({
     orientation: 'top',
+    groupWidthMode: 'fixed',
+    groupWidth: '260px',
     timeAxis: {
       scale: 'month',
       step: mode === 'month' ? 1 : 3,
@@ -243,11 +245,34 @@ onMounted(async () => {
 }
 
 .timeline-surface :deep(.timeline-roadmap-theme.vis-timeline) {
+  width: 100% !important;
+  max-width: none !important;
   height: 100%;
   border: 1px solid #dbe2f0;
   border-radius: 20px;
   overflow: hidden;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-panel.vis-left) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .timeline-group-label) {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-item) {
+  height: auto;
+  min-height: 0;
+}
+
+.timeline-surface :deep(.timeline-roadmap-theme .vis-item .vis-item-content) {
+  height: auto;
 }
 
 .timeline-surface :deep(.timeline-roadmap-theme .vis-panel.vis-left),
