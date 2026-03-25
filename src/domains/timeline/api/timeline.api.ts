@@ -1,7 +1,7 @@
 import type { TreeNodeData } from '../types/tree.types'
 import type { ItemCard } from '../types/item.types'
 import type { TimelineItem } from '../types'
-import { fetchRootNodes } from './tree.api'
+import { fetchAllTreeNodes, fetchRootNodes } from './tree.api'
 import { fetchAllItems, fetchItemById } from './items.api'
 
 /**
@@ -12,14 +12,22 @@ export interface RoadmapProjectData {
   tasks: ItemCard[]
 }
 
+export interface TimelineProjectLoadOptions {
+  bindAllOnMount?: boolean
+}
+
 /**
  * 백엔드에서 전체 프로젝트 데이터를 조회
  * - GET /api/tree/roots  → Level 1 트리 노드 (groups)
  * - GET /api/items/all   → 전체 아이템 flat 배열 (tasks)
  */
-export const fetchTimelineProject = async (): Promise<RoadmapProjectData> => {
+export const fetchTimelineProject = async (
+  options: TimelineProjectLoadOptions = {},
+): Promise<RoadmapProjectData> => {
+  const { bindAllOnMount = true } = options
+
   const [groups, tasks] = await Promise.all([
-    fetchRootNodes(),
+    bindAllOnMount ? fetchAllTreeNodes() : fetchRootNodes(),
     fetchAllItems(),
   ])
   return { groups, tasks }

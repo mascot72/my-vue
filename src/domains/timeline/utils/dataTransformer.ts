@@ -238,10 +238,23 @@ export const transformBackendProjectToTimeline = (
   groups: TreeNodeData[],
   tasks: ItemCard[],
 ): TransformedTimelineData => {
+  const childrenByParent = new Map<string, string[]>()
+  groups.forEach((group) => {
+    if (!group.parentId) return
+    const existing = childrenByParent.get(group.parentId) ?? []
+    existing.push(group.id)
+    childrenByParent.set(group.parentId, existing)
+  })
+
   const mappedGroups = groups.map((group) => ({
     id: group.id,
     content: `<div style="font-weight: 600;">${group.name}</div>`,
     title: `${group.name}\nLevel: ${group.level}`,
+    parent: group.parentId,
+    treeLevel: group.level,
+    nestedGroups: childrenByParent.get(group.id) ?? [],
+    showNested: true,
+    order: group.id,
   }))
 
   const mappedItems = tasks.map((task) => transformTaskToTimelineItem(toProjectTask(task)))

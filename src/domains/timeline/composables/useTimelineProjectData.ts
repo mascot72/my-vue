@@ -1,5 +1,9 @@
 import { ref, computed } from 'vue'
-import { fetchTimelineProject, fetchTaskDetails } from '../api/timeline.api'
+import {
+  fetchTimelineProject,
+  fetchTaskDetails,
+  type TimelineProjectLoadOptions,
+} from '../api/timeline.api'
 import {
   transformBackendProjectToTimeline,
   transformBackendItemToTaskDetailHtml,
@@ -25,12 +29,12 @@ export const useTimelineProjectData = () => {
   /**
    * 프로젝트 데이터 로드
    */
-  const loadProject = async () => {
+  const loadProject = async (options: TimelineProjectLoadOptions = {}) => {
     loading.value = true
     error.value = null
 
     try {
-      const project = await fetchTimelineProject()
+      const project = await fetchTimelineProject(options)
       data.value = transformBackendProjectToTimeline(project.groups, project.tasks)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project data'
@@ -77,7 +81,7 @@ export const useTimelineProjectData = () => {
   /**
    * 그룹별 아이템 개수
    */
-  const getTaskCountByGroup = (groupId: number) => {
+  const getTaskCountByGroup = (groupId: number | string) => {
     return items.value.filter((item) => item.group === groupId).length
   }
 

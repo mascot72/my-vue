@@ -29,7 +29,7 @@ const {
 } = useRoadmapViewModel()
 
 onMounted(async () => {
-  await initialize()
+  await initialize({ bindAllOnMount: true })
 })
 </script>
 

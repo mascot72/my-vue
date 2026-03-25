@@ -16,6 +16,10 @@ export interface SummaryCard {
   tone: 'slate' | 'blue' | 'indigo' | 'green'
 }
 
+export interface RoadmapInitializeOptions {
+  bindAllOnMount?: boolean
+}
+
 export const useRoadmapViewModel = () => {
   const {
     loading,
@@ -66,7 +70,26 @@ export const useRoadmapViewModel = () => {
 
   const filteredGroups = computed(() => {
     const visibleGroupIds = new Set(filteredItems.value.map((item) => String(item.group)))
-    return groups.value.filter((group) => visibleGroupIds.has(String(group.id)))
+
+    if (visibleGroupIds.size === 0) {
+      return groups.value
+    }
+
+    const byId = new Map(groups.value.map((group) => [String(group.id), group]))
+    const keepIds = new Set<string>()
+
+    visibleGroupIds.forEach((groupId) => {
+      let currentId: string | undefined = groupId
+      while (currentId) {
+        if (keepIds.has(currentId)) break
+        keepIds.add(currentId)
+
+        const currentGroup = byId.get(currentId) as { parent?: string | number } | undefined
+        currentId = currentGroup?.parent ? String(currentGroup.parent) : undefined
+      }
+    })
+
+    return groups.value.filter((group) => keepIds.has(String(group.id)))
   })
 
   const stats = computed(() => getProgressStats())
@@ -107,8 +130,8 @@ export const useRoadmapViewModel = () => {
     }
   })
 
-  const initialize = async () => {
-    await loadProject()
+  const initialize = async (options: RoadmapInitializeOptions = {}) => {
+    await loadProject({ bindAllOnMount: options.bindAllOnMount ?? true })
   }
 
   return {
