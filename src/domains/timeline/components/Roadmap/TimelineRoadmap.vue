@@ -169,6 +169,7 @@ onMounted(async () => {
 .roadmap-wrapper {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
   min-height: 680px;
 }
 
@@ -229,11 +230,20 @@ onMounted(async () => {
 }
 
 .timeline-surface {
+  display: flex;
   min-height: 0;
+  height: 100%;
   padding: 18px;
 }
 
+.timeline-surface :deep(.timeline-roadmap-theme) {
+  width: 100%;
+  height: 100%;
+  min-height: 560px;
+}
+
 .timeline-surface :deep(.timeline-roadmap-theme.vis-timeline) {
+  height: 100%;
   border: 1px solid #dbe2f0;
   border-radius: 20px;
   overflow: hidden;

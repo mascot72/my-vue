@@ -1,7 +1,3 @@
-<!-- Timeline.vue
-onMounted의 timeline.value.on("itemover", async (eventProps) => { 부분에 처리에서
-선택한 item의 하위가 존재하면 (trmCount > 0) axios이용 data-fetch를 수행하여 itemsDS에 추가하고 click event등으로 동작하도록 하고 싶은데,
-현재 문제점은 마우스 hover시 계속 이 구문이 실행 되면서 data-fetch가 무한으로 실행되는 문제가 있어!, 해결책을 알려줘 -->
 <template>
   <div class="roadmap-wrapper">
     <div class="dxplm-vis-timeline-wrapper">
@@ -30,16 +26,16 @@ onMounted의 timeline.value.on("itemover", async (eventProps) => { 부분에 처
     </div>
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import {
   defineExpose,
-  h,
   nextTick,
   onBeforeUnmount,
   onMounted,
   reactive,
   ref,
-  render,
   shallowRef,
   toRaw,
   markRaw,
@@ -52,11 +48,20 @@ import moment from "moment";
 import TimelineArrows from "./visTimelineArrows.js";
 import ItemInfoPopup from "./ItemInfoPopup.vue";
 import VisContextMenu from "./VisContextMenu.vue";
-import TimelineGroup from "./TimelineGroup.vue";
-import TimelineItem from "./TimelineItem.vue";
 import { useDdStore } from "dxplm-component";
 import { toPascal, perfLog } from "../utils/dataTransformaer";
 import { useTimelineStore } from "@/modules/tes/ermm/store/timeline.store";
+import {
+  buildGroupTemplateHtml,
+  buildItemTemplateHtml,
+  resolveTemplateControlAction,
+  syncDataSetById,
+} from "./timelineTemplateInjector";
+
+defineOptions({
+  name: "RoadmapTimeline",
+});
+
 const ddStore = useDdStore();
 const { locale } = useI18n();
 const $msg = inject("$msg");
@@ -232,38 +237,30 @@ const defaultOptions = {
         return moment(date).format("DD일");
       }
     },
-    majorLabels: function (date, scale, step) {
+    majorLabels: function (date) {
       return moment(date).format(yearFormat.get(locale.value) || "YYYY");
     },
   },
   // editable: true, // 편집 기능 사용
   showTooltips: false, // 마우스오버 시 레이어팝업을 띄우기 위해 툴팁 사용 해제
   groupTemplate: (group) => {
-    // console.count("🎨 GROUP_RENDER_COUNT");
     if (!group) {
-      // vis-timeline이 내부적으로 높이 계산 등을 위해 빈 그룹으로 호출하는 경우가 있으므로 빈 div 반환
       return document.createElement("div");
     }
+
     const container = document.createElement("div");
-    // 그룹의 높이를 강제로 52px로 설정 (vis-timeline은 컨텐츠 높이를 기준으로 row 높이를 계산함) <- class로 주니 적용 안됨;;;;
-    container.style.minHeight = "52px"; // 수정 시 퍼블도 수정 필요
+    container.className = "vis-group-template-root";
+    container.style.minHeight = "52px";
     container.style.display = "flex";
     container.style.alignItems = "center";
-    render(
-      h(TimelineGroup, {
-        group,
-        isChecked: visibleGroups.value.has(group.id),
-        msg: changeInfoText,
-        onToggle: (groupId, checked) => toggleGroupVisibility(groupId, checked),
-        onHistorySwitchChange: (groupId, onHistory) =>
-          historyVisibility(groupId, onHistory),
-      }),
-      container,
-    );
+    container.innerHTML = buildGroupTemplateHtml({
+      group,
+      isChecked: visibleGroups.value.has(group.id),
+      changeInfoText,
+    });
     return container;
   },
   template: function (item, element, data) {
-    // console.count("🎨 ITEM_RENDER_COUNT");
     const container = document.createElement("div");
     container.classList.add("vis-item-wrapper");
     //상태별 class 추가
@@ -278,22 +275,11 @@ const defaultOptions = {
         container.classList.add(itemCompareStatusClass);
       }
     }
-    // Vue 컴포넌트 렌더링
-    render(
-      h(TimelineItem, {
-        data,
-        timelineState,
-        viewStatus: internalViewStatus,
-        onAddClick: (itemId) => {
-          // TimelineItem의 addClick 이벤트로 연결
-          visibleSubTechTree(
-            !timelineState.activeArrowItemIds.includes(itemId),
-            itemId,
-          );
-        },
-      }),
-      container,
-    );
+
+    container.innerHTML = buildItemTemplateHtml({
+      data,
+      activeArrowItemIds: timelineState.activeArrowItemIds,
+    });
     return container;
   },
   onAdd: function (item, callback) {
@@ -302,10 +288,9 @@ const defaultOptions = {
 };
 const timelineRef = ref(null);
 const timeline = shallowRef(null);
-const groups = null;
 let timelineArrows = null;
 const itemsDS = new DataSet([]);
-let groupsDS = new DataSet([]);
+const groupsDS = new DataSet([]);
 const lazyLoadedProductIds = new Set();
 const inFlightProductFetchMap = new Map();
 // ref는 반응이 뭔가 느림...
@@ -328,6 +313,32 @@ const contextMenu = ref({
   items: [],
   data: null, // 클릭된 아이템 또는 그룹 데이터
 });
+
+function handleTemplateControlClick(event) {
+  const action = resolveTemplateControlAction(event);
+  if (!action) return;
+
+  event.stopPropagation();
+  if (typeof event.stopImmediatePropagation === "function") {
+    event.stopImmediatePropagation();
+  }
+
+  if (action.type === "toggle-item-link") {
+    visibleSubTechTree(
+      !timelineState.activeArrowItemIds.includes(action.itemId),
+      action.itemId,
+    );
+    timeline.value?.redraw();
+    return;
+  }
+
+  if (action.type === "toggle-group") {
+    toggleGroupVisibility(action.groupId, action.checked);
+    return;
+  }
+
+  historyVisibility(action.groupId, action.checked);
+}
 
 const getCurrentTrmCount = (productItemId) => {
   const currTrm = itemsDS.get({
@@ -375,7 +386,6 @@ const fetchAndAppendTrmItems = async (productItemId) => {
 
     if (trmsResult.length > 0) {
       itemsDS.update(trmsResult);
-      timeline.value?.setItems(itemsDS);
     }
 
     const updatedTrmCount = getCurrentTrmCount(productItemId);
@@ -872,9 +882,7 @@ const reloadGroups = (newGroups, initVisibleGroup = true) => {
   try {
     // 연결선 삭제
     removeTimeLineArrows();
-    // [중요] 그룹 데이터 변경 시, 기존 아이템들이 없는 그룹을 참조하여 발생하는 무한 루프 방지
-    // 그룹을 세팅하기 전에 아이템을 먼저 비워줍니다.
-    timeline.value?.setItems(new DataSet([]));
+    itemsDS.clear();
     if (initVisibleGroup) {
       initializeVisibleGroups(newGroups);
       const rawGroups = toRaw(newGroups);
@@ -892,36 +900,12 @@ const reloadGroups = (newGroups, initVisibleGroup = true) => {
         g.showNested = g.isTrm === undefined ? true : g.isTrm;
         return g;
       });
-      const newGroupsDataSet = new DataSet(sanitizedGroups);
-      if (timeline.value && typeof timeline.value.setGroups === "function") {
-        timeline.value.setGroups(newGroupsDataSet);
-      }
-      groupsDS = newGroupsDataSet;
+      syncDataSetById(groupsDS, sanitizedGroups);
     }
   } catch (e) {
     console.error("[Timeline Error] setGroups failed", e);
   }
   // Groups가 설정된 후, 이 시점에서 아이템을 필터링하고 설정합니다.
-  // reloadItems(props.allItems);
-};
-const reloadItems = (newAllItems) => {
-  perfLog.start("DATA_RELOAD_AND_FILTER");
-  if (!newAllItems || !newAllItems.length > 0) {
-    if (timeline.value) {
-      timeline.value.setItems(new DataSet([]));
-    }
-    perfLog.end("DATA_RELOAD_AND_FILTER");
-    return;
-  }
-  const filtered = newAllItems.filter((i) => visibleGroups.value.has(i.group));
-  const resFilterd = filtered.map((item) => ({
-    ...item,
-    itemStatusName: getDdName("TES.ROAD_STATUS", item.itemStatusCode),
-  }));
-  itemsDS.clear();
-  itemsDS.add(toRaw(resFilterd));
-  timeline.value?.setItems(itemsDS);
-  perfLog.end("DATA_RELOAD_AND_FILTER");
 };
 /**
  * 데이터 갱신 및 전체 로딩 시간 측정
@@ -948,12 +932,10 @@ const reloadData = async () => {
       ...item,
       itemStatusName: getDdName("TES.ROAD_STATUS", item.itemStatusCode),
     }));
+
   requestAnimationFrame(() => {
-    groupsDS.clear();
-    groupsDS.add(markRaw(sanitizedGroups));
-    itemsDS.clear();
-    itemsDS.add(markRaw(filteredItems));
-    timeline.value?.setItems(itemsDS);
+    syncDataSetById(groupsDS, markRaw(sanitizedGroups));
+    syncDataSetById(itemsDS, markRaw(filteredItems));
     // 연결선이 있다면 초기화
     removeTimeLineArrows();
     perfLog.end("DATA_PROCESS");
@@ -969,18 +951,6 @@ const reloadData = async () => {
       });
     });
   });
-};
-const onInitialDraw = () => {
-  const visTimelineEl = timelineRef.value?.querySelector(".vis-timeline");
-  if (visTimelineEl) {
-    visTimelineEl.style.visibility = "visible";
-  }
-  const loadingScreen = document.querySelector(".vis-loading-screen");
-  if (loadingScreen) {
-    loadingScreen.remove();
-  }
-  // B. 중요: 리스너 제거 (계속 실행되지 않도록)
-  timeline.value.off("redraw", onInitialDraw);
 };
 // 캡처링(true) 단계 처리 대상 이벤트
 // 'click' 뿐만 아니라 'mousedown', 'mouseup'도 막아야 확실합니다.
@@ -1080,12 +1050,14 @@ onMounted(async () => {
       showNested: g.isTrm === undefined ? true : g.isTrm,
     }),
   );
-  groupsDS.add(sanitizedGroups);
-  // 초기 아이템 설정
-  const initialFilteredItems = props.allItems.filter((i) =>
-    visibleGroups.value.has(i.group),
-  );
-  // const itemsDataSet = new DataSet(toRaw(initialFilteredItems));
+  syncDataSetById(groupsDS, sanitizedGroups);
+  const initialFilteredItems = props.allItems
+    .filter((i) => visibleGroups.value.has(i.group))
+    .map((item) => ({
+      ...item,
+      itemStatusName: getDdName("TES.ROAD_STATUS", item.itemStatusCode),
+    }));
+  syncDataSetById(itemsDS, toRaw(initialFilteredItems));
   perfLog.end("CREATE_DATASETS");
   // [중요] 타임라인 인스턴스화 및 첫 그리기 부하
   perfLog.start("TIMELINE_INSTANCE_CREATION");
@@ -1103,6 +1075,7 @@ onMounted(async () => {
       leftPanel.addEventListener(evt, blockToggleHandler, true);
     });
   }
+  timelineRef.value?.addEventListener("click", handleTemplateControlClick, true);
   // event 처리하기
   events.forEach((name) => {
     timeline.value.on(name, (properties) => {
@@ -1170,6 +1143,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   lazyLoadedProductIds.clear();
   inFlightProductFetchMap.clear();
+  timelineRef.value?.removeEventListener("click", handleTemplateControlClick, true);
   const leftPanel = timelineRef.value?.querySelector(".vis-panel.vis-left");
   if (leftPanel) {
     toggleHandlerEvents.forEach((evt) => {

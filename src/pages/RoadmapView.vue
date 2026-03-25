@@ -110,6 +110,7 @@ onMounted(async () => {
 }
 
 .timeline-panel {
+  display: flex;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.2);
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
@@ -119,6 +120,7 @@ onMounted(async () => {
 }
 
 .timeline-panel {
+  height: 100%;
   min-height: 680px;
 }
 

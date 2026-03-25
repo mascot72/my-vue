@@ -1,171 +1,62 @@
- <!-- "완전한 HTML String 방식"으로 전환하도록 전체 코드에 대해 코드를 효율적으로 Refactory해주고 전체 결과를 알려줘  -->
-<template>
-  <div class="vis-group-wrapper">
-
-    <label
-
-      :class="[
-
-        'vis-group-label',
-
-        { 'roadmap-product': group.isRoadmapProduct },
-
-      ]"
-
-    >
-
-      <input
-
-        v-if="!group.isOrganization && !group.isSubgroup"
-
-        type="checkbox"
-
-        :checked="isChecked"
-
-        class="mr-1"
-
-        @change="onChange"
-
-      />
-
-      {{ group.content }}
-
-    </label>
-
-
-
-    <div
-
-      v-if="group.isOrganization"
-
-      @click.stop
-
-      @mousedown.stop
-
-      @mouseup.stop
-
-      @dblclick.stop
-
-      @pointerdown.stop
-
-    >
-
-      <label class="mr-8 font-size-12">
-
-        {{ msg }}
-
-      </label>
-
-      <n-switch size="small" @update:value="onHistorySwitchChange" />
-
-    </div>
-
+<script lang="ts">
+export const TIMELINE_GROUP_DESIGN_SOURCE = `
+<div class="vis-group-wrapper">
+  <label class="vis-group-label">
+    <input class="group-toggle-input mr-1" type="checkbox" />
+    <span class="group-content">{{content}}</span>
+  </label>
+  <div class="group-history-wrap">
+    <label class="mr-8 font-size-12">{{changeInfoText}}</label>
+    <input class="group-history-switch" type="checkbox" />
   </div>
-
-</template>
-
-
-
-<script setup>
-
-import { NSwitch } from "naive-ui";
-
-
-
-const props = defineProps({
-
-  group: {
-
-    type: Object,
-
-    default: () => ({}),
-
-  },
-
-  isChecked: {
-
-    type: Boolean,
-
-    default: true,
-
-  },
-
-  msg: {
-
-    type: String,
-
-    default: null,
-
-  },
-
-});
-
-
-
-const emit = defineEmits(["toggle", "history-switch-change"]);
-
-
-
-const onChange = (event) => {
-
-  emit("toggle", props.group.id, event.target.checked);
-
-};
-
-
-
-const onHistorySwitchChange = (value) => {
-
-  emit("history-switch-change", props.group.id, value);
-
-};
-
-
-
-const onLabelEvent = (e) => {
-
-  if (!props.group.isOrganization) {
-
-    e.stopPropagation();
-
-  }
-
-};
-
+</div>
+`
 </script>
 
+<script setup lang="ts">
+defineProps<{
+  content?: string
+  isChecked?: boolean
+  showHistory?: boolean
+  changeInfoText?: string
+}>()
+</script>
 
+<template>
+  <div class="vis-group-wrapper">
+    <label class="vis-group-label">
+      <input class="group-toggle-input mr-1" type="checkbox" :checked="isChecked" />
+      <span class="group-content">{{ content }}</span>
+    </label>
+    <div v-if="showHistory" class="group-history-wrap">
+      <label class="mr-8 font-size-12">{{ changeInfoText }}</label>
+      <input class="group-history-switch" type="checkbox" />
+    </div>
+  </div>
+</template>
 
-<style lang="scss" scoped>
-
+<style scoped>
 .vis-group-wrapper {
-
   display: flex;
-
   align-items: center;
-
   justify-content: space-between;
-
   width: 100%;
-
   height: 100%;
-
 }
 
 .vis-group-label {
-
   cursor: pointer;
-
   display: flex;
-
   align-items: center;
+}
 
+.group-history-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mr-1 {
-
   margin-right: 4px;
-
 }
-
 </style>
