@@ -543,3 +543,55 @@ server/
 - `ItemHoverLayerPopup.vue`
   - Popup UI 렌더링 전담
   - `close`, `openDetail`, `enter`, `leave` 이벤트 emit
+
+### 5-4. 30 Mar 추가 업데이트 (API 인터페이스 확장 + Group 체크박스 연동)
+
+#### A. workspaceNew API 인터페이스 확장
+
+`workspaceNew/timeline.store.ts`에서 사용하던 메서드와 실제 API 래퍼 간 불일치를 해소함.
+
+- 대상 파일: `src/domains/timeline/components/Roadmap/workspaceNew/useTimelineApi.ts`
+- 추가 메서드:
+  - `fetchDdCode(masterCode)`
+  - `fetchOrgGroups(payload)`
+  - `fetchGroups(payload)`
+
+현재 mock 서버에 org/group 전용 endpoint가 없으므로 아래 방식으로 호환 처리:
+
+- `fetchOrgGroups`: `/workspace-roadmap/items` 응답의 `roadOrgGroupProdLinkId`를 기반으로 조직 노드(`ORG-*`) 파생 생성
+- `fetchGroups`: 동일 응답에서 제품 그룹을 유도하고 `parent: ORG-*` 연결
+- `fetchDdCode`: `TES.ROAD_STATUS` 코드셋을 반환해 상태명 매핑 유지
+
+결과:
+
+- `timeline.store.ts`의 `syncDdCode`, `loadOrgGroups`, `loadGroups`가 정상 동작
+- `Timeline.vue` 마운트 시 items + groups 초기 로딩 경로가 모두 연결됨
+
+#### B. Group 체크박스 표시 조건 정합화
+
+- 대상 파일: `src/domains/timeline/components/Roadmap/workspaceNew/templates.ts`
+- 기존 불일치: `isSubgroup` 사용
+- 정리 후 기준: `isSubGroup` 사용
+
+체크박스 노출 규칙:
+
+- 조직 그룹(`isOrganization`)은 미노출
+- 루트 제품 그룹(조직 직하위 그룹)에서만 노출
+
+#### C. 체크박스와 Items 표시/숨김 연동
+
+- 대상 파일: `src/domains/timeline/components/Roadmap/workspaceNew/useTimeline.ts`
+- 구현 내용:
+  - `.vis-group-check` 클릭 감지
+  - `nestedGroups`를 따라 하위 그룹까지 탐색
+  - 대상 그룹/하위그룹의 아이템을 DataSet 업데이트로 show/hide
+  - `toggleAllGroups(show)`도 동일한 기준으로 동작
+
+- 대상 파일: `src/domains/timeline/components/Roadmap/workspaceNew/Timeline.vue`
+  - `groupTemplate` 렌더 시 `group.checked` 반영
+  - 외부 제어용 `toggleGroupVisibility` expose
+
+#### D. 검증 결과
+
+- `workspaceNew/useTimelineApi.ts`, `workspaceNew/timeline.store.ts`, `workspaceNew/Timeline.vue`, `workspaceNew/useTimeline.ts`, `workspaceNew/templates.ts` 기준 타입 에러 없음
+- `vue-tsc --noEmit` 통과

@@ -1,6 +1,11 @@
 const DELEGATE_CLASS = 'com.mando.dxplm.tes.roadmap.file.delegate.RoadmapFileAuthDelegate'
 
-export const itemTemplate = (data, timelineState) => {
+type TemplateRecord = Record<string, unknown>
+
+export const itemTemplate = (
+  data: TemplateRecord,
+  timelineState: { activeArrowItemIds: string[] },
+) => {
   const writingClass =
     data.writingStatus === 'code001' ? 'lock' : data.writingStatus === 'code002' ? 'unlock' : ''
   const isActive = timelineState.activeArrowItemIds.includes(String(data.id))
@@ -43,8 +48,9 @@ export const itemTemplate = (data, timelineState) => {
   `
 }
 
-export const groupTemplate = (group, isChecked, msg) => {
-  const showCheckbox = !group.isOrganization && !group.isSubgroup
+export const groupTemplate = (group: TemplateRecord, isChecked: boolean, msg: string) => {
+  const isRootProductGroup = !group.isSubGroup || String(group.parent || '').startsWith('ORG-')
+  const showCheckbox = !group.isOrganization && isRootProductGroup
   const checkboxHtml = showCheckbox
     ? `<input type="checkbox" class="vis-group-check" data-id="${group.id}" ${isChecked ? 'checked' : ''} />`
     : ''

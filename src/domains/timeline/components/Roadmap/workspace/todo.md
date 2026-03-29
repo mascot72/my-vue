@@ -1,3 +1,8 @@
+## 문서 분리 안내 (2026-03-30)
+
+- legacy workspace 작업: 이 문서에서 계속 관리
+- workspaceNew 작업: ../workspaceNew/todo.md 에서 별도 관리
+
 visTimelineArrow.js => ts
 필요기술을 보여주기 , 숨기기 처리
 
@@ -78,7 +83,7 @@ gemini > Vue Timeline Composable 분석: 금요일 퇴근시 받은 작업 중 �
     - nodes ref (VUE proxy)
     + 각종 상호작용기능 원할 한지 검토
       - 전체 펼치기/접기 (완료: sub items 기준)
-      - 각각 group 펼치기/접기
+      - 각각 group 펼치기/접기 (진행중: 체크박스 기반 items 보이기/숨기기 연동 완료)
       - 하위 items 보이기/숨기기 (완료)
       - 하위 items와 arrow연결 보이기/숨기기 (완료)
       - item 추가하고 focus 이동하기
@@ -244,5 +249,40 @@ server/
 - `ItemHoverLayerPopup.vue`
   - Popup UI 렌더링 전담
   - `close`, `openDetail`, `enter`, `leave` 이벤트 emit
+
+
+## 오늘의(30 Mar) 추가 작업 기록 (API 확장 + Group 체크박스 연동)
+
+### 1) 완료된 작업
+
+- [x] `workspaceNew/useTimelineApi.ts`에 store 연동 메서드 확장
+  - [x] `fetchDdCode(masterCode)` 추가
+  - [x] `fetchOrgGroups(payload)` 추가
+  - [x] `fetchGroups(payload)` 추가
+
+- [x] `Timeline.vue` 초기 데이터 로딩 경로 보강
+  - [x] 마운트 시 `syncDdCode('TES.ROAD_STATUS')` 호출
+  - [x] props 그룹 미지정 시 `loadGroups()` 호출
+
+- [x] group 템플릿 키 불일치 정리
+  - [x] `isSubgroup` → `isSubGroup` 기준으로 통일
+  - [x] 체크박스 노출 규칙 정합화(조직 그룹 제외, 루트 제품 그룹 중심)
+
+- [x] 체크박스와 item 표시/숨김 연동
+  - [x] `.vis-group-check` 클릭 이벤트 처리
+  - [x] `nestedGroups` 하위 트리까지 대상 그룹 계산
+  - [x] 대상 그룹 item DataSet update로 show/hide 적용
+  - [x] `toggleAllGroups(show)` 동작 구현
+
+### 2) 현재 상태
+
+- group 체크박스 클릭 시 해당 그룹 및 하위 그룹 item visibility가 즉시 반영됨
+- 기존 sub-item(+/-) 토글, arrow 동작과 충돌 없이 동작
+- `vue-tsc --noEmit` 타입체크 통과
+
+### 3) 다음 작업 후보
+
+- [ ] 그룹 체크 상태와 “전체 그룹 토글 UI”를 화면 컨트롤과 완전 동기화
+- [ ] group collapse(행 자체 접기) 요구가 있으면 vis-timeline 그룹 접힘 모델로 확장
 
 

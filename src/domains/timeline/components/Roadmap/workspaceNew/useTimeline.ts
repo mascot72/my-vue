@@ -50,6 +50,69 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     timelineInstance?.redraw()
   }
 
+  const getDescendantGroupIds = (groupId: string) => {
+    const result = new Set<string>()
+    const queue: string[] = [String(groupId)]
+
+    while (queue.length) {
+      const currentId = queue.shift()
+      if (!currentId || result.has(currentId)) continue
+      result.add(currentId)
+
+      const group: any = groupsDS.get(currentId)
+      const nested = Array.isArray(group?.nestedGroups) ? group.nestedGroups : []
+      nested.forEach((childId: unknown) => {
+        const normalized = String(childId)
+        if (!result.has(normalized)) {
+          queue.push(normalized)
+        }
+      })
+    }
+
+    return Array.from(result)
+  }
+
+  const setItemsVisibleByGroupIds = (groupIds: string[], visible: boolean) => {
+    const targetGroupIds = new Set(groupIds.map((id) => String(id)))
+    if (!targetGroupIds.size) return
+
+    const targetItems = itemsDS.get({
+      filter: (item: any) => targetGroupIds.has(String(item.group)),
+    })
+
+    if (!targetItems.length) return
+
+    const updates = targetItems.map((item: any) => {
+      const existingStyle = String(item.style ?? '')
+      const normalizedStyle = existingStyle.replace(/display\s*:\s*none;?/gi, '').trim()
+
+      return {
+        ...item,
+        style: visible
+          ? normalizedStyle
+          : `${normalizedStyle}${normalizedStyle ? '; ' : ''}display:none;`,
+      }
+    })
+
+    itemsDS.update(updates)
+    timelineInstance?.redraw()
+  }
+
+  const setGroupChecked = (groupId: string, checked: boolean) => {
+    const current: any = groupsDS.get(groupId)
+    if (!current) return
+    groupsDS.update({
+      ...current,
+      checked,
+    })
+  }
+
+  const toggleGroupVisibility = (groupId: string, visible: boolean) => {
+    const targetGroupIds = getDescendantGroupIds(groupId)
+    setGroupChecked(groupId, visible)
+    setItemsVisibleByGroupIds(targetGroupIds, visible)
+  }
+
   const reloadData = (items: any[]) => {
     if (!items) return
     const processed = items.map((item) => {
@@ -208,6 +271,16 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
 
   const onContainerClick = async (event: MouseEvent) => {
     const target = event.target as HTMLElement
+
+    const groupCheck = target.closest('.vis-group-check') as HTMLInputElement | null
+    if (groupCheck) {
+      event.stopPropagation()
+      const groupId = groupCheck.dataset.id
+      if (!groupId) return
+      toggleGroupVisibility(groupId, groupCheck.checked)
+      return
+    }
+
     const addButton = target.closest('.vis-item-add') as HTMLElement | null
 
     if (addButton) {
@@ -229,9 +302,16 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     }
   }
 
-  const toggleAllGroups = (_show: boolean) => {
-    const allGroups = groupsDS.get()
+  const toggleAllGroups = (show: boolean) => {
+    const allGroups = groupsDS.get({
+      filter: (group: any) => !group.isOrganization,
+    })
+
     if (!allGroups.length) return
+
+    allGroups.forEach((group: any) => {
+      toggleGroupVisibility(String(group.id), show)
+    })
   }
 
   const setInstance = (instance: any) => {
@@ -251,6 +331,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     reloadData,
     onContainerClick,
     toggleAllGroups,
+    toggleGroupVisibility,
     handleItemOver: loadSubTechItems,
     setInstance,
     expandAllSubItems,

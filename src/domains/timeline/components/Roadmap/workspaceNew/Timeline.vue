@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 defineOptions({ name: 'WorkspaceNewTimeline' })
 import { Timeline } from 'vis-timeline/standalone'
 import { itemTemplate, groupTemplate } from './templates'
@@ -58,28 +58,8 @@ const props = defineProps({
 
 const emit = defineEmits(['item-select', 'zoom-state-change', 'open-detail-slide'])
 
-const commCode = reactive(
-  new Map([
-    [
-      'TES.ROAD_STATUS',
-      [
-        { ddValue: 'ACTIVE', nameKo: '진행' },
-        { ddValue: 'IN_PROGRESS', nameKo: '진행중' },
-        { ddValue: 'PLANNING', nameKo: '계획' },
-        { ddValue: 'COMPLETED', nameKo: '완료' },
-        { ddValue: 'DONE', nameKo: '완료' },
-        { ddValue: 'HOLD', nameKo: '보류' },
-        { ddValue: 'ON_HOLD', nameKo: '보류' },
-      ],
-    ],
-  ]),
-)
-
 const getDdName = (masterCode: string, code: string) => {
-  const group = commCode.get(masterCode)
-  if (!group) return ''
-  const result = group.find((item: { ddValue: string }) => item.ddValue === code)
-  return result ? result.nameKo : ''
+  return store.getDdName(masterCode, code)
 }
 
 const { makeTimelineOptions } = useTimelineOption({
@@ -95,6 +75,7 @@ const {
   reloadData,
   onContainerClick,
   toggleAllGroups,
+  toggleGroupVisibility,
   setInstance,
   expandAllSubItems,
   collapseAllSubItems,
@@ -154,6 +135,8 @@ watch(
 onMounted(async () => {
   if (!timelineRef.value) return
 
+  await store.syncDdCode('TES.ROAD_STATUS')
+
   const currentOptions = makeTimelineOptions(props.viewMode as 'MONTH' | 'QUARTER')
   const options = {
     ...currentOptions,
@@ -165,7 +148,7 @@ onMounted(async () => {
     groupTemplate: (group: TimelineRecord) => {
       const div = document.createElement('div')
       div.classList.add('vis-group-custom')
-      div.innerHTML = groupTemplate(group, true, props.msg)
+      div.innerHTML = groupTemplate(group, group.checked !== false, props.msg)
       return div
     },
   }
@@ -181,6 +164,8 @@ onMounted(async () => {
 
   if ((props.groups as TimelineRecord[]).length > 0) {
     reloadGroups(props.groups as TimelineRecord[])
+  } else {
+    await store.loadGroups({ roadmapType: 'PRM', langCode: 'Ko' })
   }
 
   timelineInstance.on('select', (properties: { items?: Array<string | number> }) => {
@@ -206,6 +191,7 @@ onBeforeUnmount(() => {
 
 defineExpose({
   toggleAllGroups,
+  toggleGroupVisibility,
   expandAllSubItems,
   collapseAllSubItems,
   focusItemById,
