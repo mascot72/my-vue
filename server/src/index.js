@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import treeRoutes from './routes/tree.js'
 import itemsRoutes from './routes/items.js'
+import workspaceRoadmapRoutes from './routes/workspaceRoadmap.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -19,6 +20,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/tree', treeRoutes)
 app.use('/api/items', itemsRoutes)
+app.use('/api/workspace-roadmap', workspaceRoadmapRoutes)
 
 // Health check
 app.get('/health', (req, res) => {
@@ -42,5 +44,6 @@ app.listen(PORT, () => {
   console.log(`📊 API endpoints:`)
   console.log(`   - Tree API: http://localhost:${PORT}/api/tree`)
   console.log(`   - Items API: http://localhost:${PORT}/api/items`)
+  console.log(`   - Workspace Roadmap API: http://localhost:${PORT}/api/workspace-roadmap`)
   console.log(`   - Health: http://localhost:${PORT}/health`)
 })

@@ -1,3 +1,4 @@
+<!-- Target Component: VisTimeline.vue => Timeline.vue -->
 <template>
   <div class="roadmap-wrapper">
     <div class="dxplm-vis-timeline-wrapper">
@@ -13,7 +14,7 @@ import { itemTemplate, groupTemplate } from "./templates.js";
 // import { useTimelineEvents } from "./useTimelineEventsOld.js";
 import { useTimelineStore } from "@/modules/tes/ermm/store/timeline.store";
 import { toPascal, perfLog } from "@/modules/tes/ermm/utils/dataTransformaer";
-import useTimelineOption from "./useTimelineOption.js";
+import useTimelineOption from "./useTimelineOption";
 import { useTimeline } from "./useTimeline";
 
 const store = useTimelineStore();

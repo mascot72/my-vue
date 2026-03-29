@@ -1,13 +1,22 @@
-import { toRaw } from "vue";
+// timeline.store.ts
+import { toRaw, reactive } from "vue";
 import { defineStore } from "pinia";
 import { useTimelineApi } from "../api/timeline.api";
 import { convertDate } from "../utils/dataTransformaer";
 import type { TimelineState } from "../types/timeline";
 import { DataSet } from "vis-data";
 import { userInfo } from "../composables/ermmUtility";
+import { useDdStore } from "dxplm-component";
+import { toPascal } from "@/modules/tes/ermm/utils/dataTransformaer";
 
 const userData = userInfo();
 const langCode = userData.langCode;
+/**
+ * [Bridge Storage]
+ * 스토어 외부에 선언하여 여러 action이 공유하며,
+ * 한 번 로드된 데이터를 메모리에 유지(Caching)
+ */
+const commCodeMap = reactive(new Map<string, any[]>());
 
 // 조직별 제품군 제품목록 data-fetch + data transform
 async function getProductItems(api: any, groups: any[], payload: any) {
@@ -116,6 +125,7 @@ export const useTimelineStore = defineStore("tes:timeline", {
     roadmapType: "",
     orgGroups: [],
     selectedRoadId: null,
+    getTechNameFn: null as ((code: string) => string) | null,
   }),
 
   getters: {
@@ -124,11 +134,43 @@ export const useTimelineStore = defineStore("tes:timeline", {
   },
 
   actions: {
+    setTechNameFn(fn: (code: string) => string) {
+      this.getTechNameFn = fn;
+    },
+    /** * 브릿지 주입 Action: 외부 스토어 데이터를 내부 Map으로 복사 */
+    async syncDdCode(masterCode: string) {
+      const ddStore = useDdStore();
+      try {
+        // 외부 스토어에서 데이터 fetch
+        const commData = await ddStore.fetchActiveDdList(masterCode);
+        if (commData) {
+          // 브릿지 스토리지(Map)에 주입
+          commCodeMap.set(masterCode, commData);
+        }
+      } catch (error) {
+        console.error(`DD Code Sync Error [${masterCode}]:`, error);
+      }
+    },
+    /**
+     * [Bridge Logic] Map을 참조하여 명칭을 반환
+     */
+    getDdName(masterCode: string, code: string) {
+      const group = commCodeMap.get(masterCode);
+      if (!group) return "";
+
+      const res = group.find((item: any) => item.ddValue === code);
+      if (!res) return "";
+
+      const langSuffix = toPascal("ko");
+      // res['nameKo'] 또는 res['nameEn']을 동적으로 참조
+      return res[`name${langSuffix}`] || res.ddName || "";
+    },
     /** 조직그룹 마스터 조회 */
     async loadOrgGroups(payload: any) {
       const data = await this.api.fetchOrgGroups(payload);
       this.orgGroups = (data || []).map((item: any) => ({
         id: item.id,
+        code: item.code,
         content: item[`name${langCode}`],
         organizationNm: item[`name${langCode}`],
         level: 1,
@@ -206,31 +248,32 @@ export const useTimelineStore = defineStore("tes:timeline", {
     async loadItems(payload: any) {
       this.loading = true;
       try {
+        // 필요한 모든 기초 데이터(DD코드, 기술분류)를 병렬로 로드
+        await this.syncDdCode("TES.ROAD_STATUS");
+
         if (payload.roadmapType === "PRM") {
-          this.items = await getProductItems(this.api, this.groups, payload); // 제품 Items
-          const promise = new Promise((resolve) => {
-            const result: string | any[] = [];
-            this.items?.map(async (e: any, idx: any) => {
-              if (idx > 0) return;
-              this.getTrms({
-                roadmapType: this.roadmapType === "PRM" ? "TRM" : "CMM",
-                productItemIds: [e.id],
-              }).then((res: any) => result.concat(res));
-            });
-            resolve(result);
-          });
-          // this.items?.map(async (e: any, idx: any) => {
-          // if (idx > 0) return;
-          // const trmsOfItem = await this.getTrms({
-          //   roadmapType: this.roadmapType === "PRM" ? "TRM" : "CMM",
-          //   productItemIds: [e.id],
-          // });
-          // if (trmsOfItem.length > 0) console.log("trmsOfItem:", trmsOfItem);
-          const subItems = await promise;
-          if (subItems) console.log("subItems:", subItems);
-          this.items.concat(subItems);
-          // });
-          console.log("this.items:", this.items);
+          const rawItems = await getProductItems(this.api, this.groups, payload); // 제품 Items
+          const resItems = rawItems.map((item: any) => ({
+            ...item,
+            itemStatusName: this.getDdName("TES.ROAD_STATUS", item.itemStatusCode),
+            // technologyClassLv1Name: this.getTechNameFn ? this.getTechNameFn(item.technologyClassLv1Id) : "",
+            // technologyClassLv2Name: this.getTechNameFn ? this.getTechNameFn(item.technologyClassLv12d) : "",
+            // technologyClassLv3Name: this.getTechNameFn ? this.getTechNameFn(item.technologyClassLv13d) : "",
+          }));
+          /* 필요기술 가져와서 연결하기 */
+          // const promises = resItems
+          //   .filter((e: any, idx: number) => idx === 0)
+          //   .map(async (ie: any) => {
+          //     const res = await this.getTrms({
+          //       roadmapType: this.roadmapType === "PRM" ? "TRM" : "CMM",
+          //       productItemIds: [ie.id],
+          //     });
+          //     return res?.map((te: any) => ({ ...te, itemLink: ie.id, group: ie.group }));
+          //   });
+          // const subItems = await Promise.all(promises);
+          // if (subItems) console.log("subItems:", subItems.flat());
+          // this.items = resItems.concat(subItems.flat());
+          this.items = resItems;
           this.itemsDS.clear();
           this.itemsDS.add(this.items);
         } else {

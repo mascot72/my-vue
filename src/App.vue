@@ -17,6 +17,7 @@ import { RouterLink, RouterView } from 'vue-router'
           <RouterLink to="/timeline">Timeline</RouterLink>
           <RouterLink to="/timeline-examples">Examples</RouterLink>
           <RouterLink to="/timeline-enhanced">Enhanced</RouterLink>
+          <RouterLink to="/roadmap">Roadmap</RouterLink>
         </nav>
       </div>
     </header>

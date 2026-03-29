@@ -826,7 +826,7 @@ const reloadGroups = (newGroups, initVisibleGroup = true) => {
   removeTimeLineArrows();
   // 그룹 데이터 변경 시, 기존 아이템들이 없는 그룹을 참조하여 발생하는 무한 루프 방지
   // 그룹을 세팅하기 전에 아이템을 먼저 비워주기
-  // timeline.value?.setItems(new DataSet([]));
+  timeline.value?.setItems(new DataSet([]));
 
   if (initVisibleGroup) {
    initializeVisibleGroups(newGroups);

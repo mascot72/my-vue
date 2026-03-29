@@ -314,3 +314,77 @@ describe('useTimelineProjectData', () => {
 - [vis-timeline Documentation](https://visjs.github.io/vis-timeline/)
 - [Vue 3 Composition API](https://vuejs.org/guide/extras/composition-api-faq.html)
 - [TypeScript Best Practices](https://www.typescriptlang.org/docs/handbook/2/types-from-types.html)
+
+---
+
+## 🧩 Roadmap Workspace Backend Spec (29 Mar)
+
+workspace 하위 Timeline 리팩토링 코드에서 사용하는 백엔드 mock 계약입니다.
+
+### 1) 목적
+
+- timeline.store.ts 의 변환 함수(`loadItems`, `getProductItems`, `getRequireTechnologyItems`, `getTrm`)와 정합되는 응답 제공
+- 제품(Item)과 필요기술(Tech) 간 parent-child 관계를 API 레벨에서 명시
+
+### 2) API Endpoint
+
+```http
+GET /api/workspace-roadmap/items
+GET /api/workspace-roadmap/items/:itemId/techs
+GET /api/workspace-roadmap/items/:itemId/trm
+```
+
+### 3) Query Parameter 규약
+
+- `roadmapType`: `PRM | TRM | COM`
+- `includeInactive`: `true | false` (기본값 `false`)
+- `page`: number (기본값 `0`)
+- `size`: number (기본값 `10000`)
+
+### 4) Response 규약
+
+성공 응답 (목록):
+
+```json
+{
+  "content": [],
+  "page": 0,
+  "size": 10000,
+  "totalElements": 0
+}
+```
+
+오류 응답:
+
+```json
+{
+  "error": true,
+  "message": "Not found",
+  "code": "ITEM_NOT_FOUND"
+}
+```
+
+### 5) 데이터 필드 최소 요건
+
+#### 5-1. Product Item (`/items`)
+
+- 필수: `id`, `nameKo/nameEn`, `devStartPlanMonth`, `devEndPlanMonth`, `roadOrgGroupProdLinkId`
+- 권장: `itemStatusCode`, `itemProgStatusCode`, `trmCount`, `vehicleTypeCode`, `seqIndex`
+
+#### 5-2. Tech Item (`/items/:itemId/techs`, `/trm`)
+
+- 필수: `id`, `itemId`, `nameKo/nameEn`, `devStartPlanMonth`, `devEndPlanMonth`
+- 권장: `technologyClassLv1Id`, `technologyClassLv2Id`, `technologyClassLv3Id`, `comTechTypeCode`
+
+### 6) 프론트 변환 보장 포인트
+
+- `getProductItems` 변환 시 timeline item 필수 필드 보장
+  - `id`, `itemLink`, `title`, `content`, `start`, `end`, `group`, `className`
+- `getRequireTechnologyItems` 변환 시 하위 기술 item 연결 필드 보장
+  - `id`, `parentItemId`, `group`, `start`, `end`
+
+### 7) 완료 기준 (DoD)
+
+- workspace Timeline에서 item 렌더링이 깨지지 않음
+- item 클릭 시 하위 tech 조회 및 표시 가능
+- 없는 `itemId` 요청 시 404 또는 empty 응답이 일관되며 프론트에서 예외 없이 처리됨

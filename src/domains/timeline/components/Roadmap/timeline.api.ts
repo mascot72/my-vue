@@ -1,6 +1,6 @@
 import { useHttp } from "@/modules/core/composables/useHttp";
 import { CONST } from "dxplm-component";
-import { useRequiredTechs } from "../api/requireTech.api";
+import { useRequiredTechs } from "./requireTech.api";
 
 const ROADMAP = "roadmap";
 export function useTimelineApi() {

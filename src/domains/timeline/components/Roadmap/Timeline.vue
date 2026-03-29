@@ -1,3 +1,4 @@
+<!-- 이 원본에서 하나씩 분할해서 점진적으로 작성한다! (3/28) -->
 <template>
   <div class="roadmap-wrapper">
     <div class="dxplm-vis-timeline-wrapper">
@@ -463,25 +464,7 @@ const getItemStatusClass = (itemStatus) => {
       itemStausClass = "status-compare-delete"; // Delete
       break;
     default:
-    // console.log("itemStatus :: ", itemStatus);
   }
-  // switch (itemStatus) {
-  //   case "sts01":
-  //     itemStausClass = "status-progress"; // 작성중
-  //     break;
-  //   case "sts02":
-  //     itemStausClass = "status-plan-pjt"; // 과제계획 수립
-  //     break;
-  //   case "sts03":
-  //     itemStausClass = "status-not-plan-pjt"; // 과제계획 미수립
-  //     break;
-  //   case "sts04":
-  //     itemStausClass = "status-new-project"; // 신사업
-  //     break;
-  //   default:
-  //     itemStausClass = "status-progress"; // 작성중
-  //     // console.log("itemStatus :: ", itemStatus);
-  // }
   return itemStausClass;
 };
 const onItemHoverShowInfoPopup = async (eventProps) => {
