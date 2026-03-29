@@ -133,23 +133,23 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
       const newItems = (trms || []).filter((item: any) => itemsDS.get(item.id) === null)
       if (newItems.length) {
         const mappedItems = newItems.map((item: any, index: number) => {
-            const start = new Date(parentItem.start)
-            start.setDate(start.getDate() + index * 10)
-            const end = new Date(start)
-            end.setDate(end.getDate() + 45)
+          const start = new Date(parentItem.start)
+          start.setDate(start.getDate() + index * 10)
+          const end = new Date(start)
+          end.setDate(end.getDate() + 45)
 
-            return {
-              ...item,
-              itemLink: itemId,
-              group: parentItem.group,
-              className: 'child-trm-card',
-              start,
-              end,
-              subgroup: `child-${itemId}-${index + 1}`,
-              subgroupOrder: index + 1,
-              itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
-            }
-          })
+          return {
+            ...item,
+            itemLink: itemId,
+            group: parentItem.group,
+            className: 'child-trm-card',
+            start,
+            end,
+            subgroup: `child-${itemId}-${index + 1}`,
+            subgroupOrder: index + 1,
+            itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
+          }
+        })
 
         itemsDS.add(mappedItems)
 
