@@ -487,3 +487,59 @@ server/
   - `loadItems`: PRM 부모 로딩 + 그룹 파생 생성
   - `getTrms`: TRM child API 응답을 timeline item 형태로 변환
   - `setSubTechCacheEnabled`: 캐시 모드 ON/OFF 전환
+
+### 5) 30 Mar 운영 업데이트 (Popup + 이벤트 분리)
+
+#### 5-1. 오늘 요청 반영 요약
+
+- `workspaceNew/Timeline.vue`에 누락되어 있던 상세 layer Popup 기능을 재가공해 이식
+- Popup을 **아이템 hover 시 표시**, **아이템에서 벗어나면 숨김**으로 동작하도록 적용
+- 아이템 클릭 시 **Popup 고정(pinned)** 유지 동작 적용
+- Popup 전용 UI를 **새 컴포넌트 파일로 분리**
+  - `src/domains/timeline/components/Roadmap/workspaceNew/ItemHoverLayerPopup.vue`
+- 이벤트 핸들러 로직을 hook(composable)으로 분리해 `Timeline.vue`를 경량화
+  - `src/domains/timeline/components/Roadmap/workspaceNew/useTimelineHoverPopup.ts`
+
+#### 5-2. Popup 동작 설명 (현재 반영된 UX)
+
+##### A. 기본 hover 동작
+
+1. 마우스가 아이템 위로 올라가면(`itemover`) Popup 표시
+2. Popup 위치는 마우스 좌표 기준으로 계산
+3. 화면 경계를 넘어가지 않도록 좌표 보정
+
+##### B. 아이템 이탈 시 동작
+
+1. 아이템에서 마우스가 벗어나면(`itemout`) 즉시 닫지 않고 짧은 지연 후 닫기
+2. 이 지연 시간 동안 마우스가 Popup 영역으로 이동하면 Popup 유지
+3. Popup 위에서도 벗어나면(leave) 닫힘(단, 고정 상태 제외)
+
+##### C. 클릭 고정(pinned) 동작
+
+1. 아이템 클릭 시 Popup을 pinned 상태로 전환
+2. pinned 상태에서는 hover out이 발생해도 Popup 유지
+3. 아래 조건에서 pinned 해제 및 Popup 닫힘
+   - Popup 닫기 버튼 클릭
+   - Popup/아이템 외부 영역 클릭
+   - `ESC` 입력
+
+##### D. 상세 열기
+
+- Popup의 `상세 보기` 클릭 시 `open-detail-slide` 이벤트 emit
+- 부모 페이지 상세 패널(또는 상세 슬라이드)로 연결 가능
+
+#### 5-3. 이벤트 분리 후 역할 경계
+
+- `Timeline.vue`
+  - timeline 인스턴스 생성/렌더 연결
+  - hook 반환 상태를 Popup 컴포넌트에 바인딩
+  - mounted/unmounted에서 timeline 이벤트 연결 및 해제
+
+- `useTimelineHoverPopup.ts`
+  - Popup 상태(`show`, `pinned`, `hoveringPopup`) 관리
+  - timeline 이벤트 핸들러(`itemover`, `itemout`, `click`) 제공
+  - 전역 이벤트(`mousedown`, `keydown`) 등록/해제 제공
+
+- `ItemHoverLayerPopup.vue`
+  - Popup UI 렌더링 전담
+  - `close`, `openDetail`, `enter`, `leave` 이벤트 emit

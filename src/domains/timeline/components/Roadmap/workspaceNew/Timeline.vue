@@ -4,6 +4,17 @@
     <div v-else-if="store.error" class="feedback error">{{ store.error }}</div>
     <div class="dxplm-vis-timeline-wrapper">
       <div ref="timelineRef" class="dxplm-vis-timeline roadmap" @click="onContainerClick"></div>
+      <ItemHoverLayerPopup
+        :show="popupState.show"
+        :pinned="popupState.pinned"
+        :top="popupPosition.top"
+        :left="popupPosition.left"
+        :item-data="popupItem"
+        @close="closePopup(true)"
+        @open-detail="onOpenDetailFromPopup"
+        @enter="onPopupEnter"
+        @leave="onPopupLeave"
+      />
     </div>
   </div>
 </template>
@@ -16,6 +27,8 @@ import { itemTemplate, groupTemplate } from './templates'
 import { useWorkspaceNewTimelineStore } from './timeline.store'
 import useTimelineOption from './useTimelineOption'
 import { useTimeline } from './useTimeline'
+import ItemHoverLayerPopup from './ItemHoverLayerPopup.vue'
+import { useTimelineHoverPopup } from './useTimelineHoverPopup'
 
 const store = useWorkspaceNewTimelineStore()
 
@@ -90,6 +103,26 @@ const {
 } =
   useTimeline(props, emit, store, getDdName)
 
+const {
+  popupState,
+  popupItem,
+  popupPosition,
+  closePopup,
+  onPopupEnter,
+  onPopupLeave,
+  onOpenDetailFromPopup,
+  handleTimelineItemOver,
+  handleTimelineItemOut,
+  handleTimelineClick,
+  attachGlobalListeners,
+  detachGlobalListeners,
+} = useTimelineHoverPopup({
+  itemsDS,
+  getAllItems: () => props.allItems as TimelineRecord[],
+  useItemTooltip: () => props.useItemTooltip,
+  onOpenDetail: (item) => emit('open-detail-slide', item),
+})
+
 const reloadGroups = (groups: TimelineRecord[]) => {
   if (!groups || !timelineInstance) return
   const processed = groups.map((group) => ({
@@ -157,9 +190,16 @@ onMounted(async () => {
     if (item) emit('open-detail-slide', item)
   })
 
+  timelineInstance.on('itemover', handleTimelineItemOver)
+  timelineInstance.on('itemout', handleTimelineItemOut)
+  timelineInstance.on('click', handleTimelineClick)
+
+  attachGlobalListeners()
+
 })
 
 onBeforeUnmount(() => {
+  detachGlobalListeners()
   destroyTimelineArrows()
   timelineInstance?.destroy()
 })
