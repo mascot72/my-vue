@@ -65,22 +65,22 @@ gemini > Vue Timeline Composable 분석: 금요일 퇴근시 받은 작업 중 �
     - [ ] 빈 데이터/없는 itemId 요청 시 오류 없이 empty-state 처리 가능
     - [ ] 최소 샘플 데이터 10개 이상(제품), 각 제품별 tech 2개 이상 준비
 * frontend 작업 및 spec
-  + router에 /roadmap-workspace 라고 추가
-  + 메뉴도 Work Roadmap 이라고 추가
-  + workspace에 존재하는 구성들이 동작되도록 Timeline.vue에 연결하기
-  + 앞의 Timline.vue에 부모 page를 만들어서 연결하기
-  + 실행해서 동작들 확인하기
-    - sub items가 보이는 (아래로 붙어서 열리는) 시점은 item의 오른쪽 하단 +/- 버튼을 통해 toggle처리 한다
-    - items 의 각 item에 techs가 sub items가 붙도록 해서 부모 item의 밑에 stack구조로 쌓이게 보이도록 한다
-    - TimelineArrow로 서로 선으로 연결하여 보이도록 한다
-  + 랜더링 및 메모리 속도등 성능 개선: 둘중 적합한 방법으로 선택
-    - DataSet
+  + router에 /roadmap-workspace 라고 추가 (완료)
+  + 메뉴도 Work Roadmap 이라고 추가 (완료)
+  + workspace에 존재하는 구성들이 동작되도록 Timeline.vue에 연결하기 (workspaceNew 기준 완료)
+  + 앞의 Timeline.vue에 부모 page를 만들어서 연결하기 (완료)
+  + 실행해서 동작들 확인하기 (workspaceNew 기준 진행)
+    - sub items가 보이는 (아래로 붙어서 열리는) 시점은 item의 오른쪽 하단 +/- 버튼을 통해 toggle처리 한다 (완료)
+    - items 의 각 item에 techs가 sub items가 붙도록 해서 부모 item의 밑에 stack구조로 쌓이게 보이도록 한다 (완료)
+    - TimelineArrow로 서로 선으로 연결하여 보이도록 한다 (완료)
+  + 랜더링 및 메모리 속도등 성능 개선: 둘중 적합한 방법으로 선택 (workspaceNew 기준 DataSet 적용)
+    - DataSet (완료)
     - nodes ref (VUE proxy)
     + 각종 상호작용기능 원할 한지 검토
-      - 전체 펼치기/접기
+      - 전체 펼치기/접기 (완료: sub items 기준)
       - 각각 group 펼치기/접기
-      - 하위 items 보이기/숨기기
-      - 하위 items와 arrow연결 보이기/숨기기
+      - 하위 items 보이기/숨기기 (완료)
+      - 하위 items와 arrow연결 보이기/숨기기 (완료)
       - item 추가하고 focus 이동하기
 
 

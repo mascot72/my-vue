@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import RoadmapView from '@/pages/RoadmapView.vue'
+import RoadmapWorkspaceNewPage from '@/pages/RoadmapWorkspaceNewPage.vue'
 import TimelinePage from '@/pages/TimelinePage.vue'
 import TimelineExamplesPage from '@/pages/TimelineExamplesPage.vue'
 import TimelineEnhancedPage from '@/pages/TimelineEnhancedPage.vue'
@@ -40,6 +41,11 @@ const router = createRouter({
       path: '/roadmap',
       name: 'roadmap',
       component: RoadmapView,
+    },
+    {
+      path: '/roadmap-workspace-new',
+      name: 'roadmap-workspace-new',
+      component: RoadmapWorkspaceNewPage,
     },
   ],
 })
