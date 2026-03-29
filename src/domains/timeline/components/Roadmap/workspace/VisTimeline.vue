@@ -31,6 +31,15 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * VisTimeline (Legacy Workspace 버전)
+ *
+ * 역할:
+ * 1) vis-timeline 인스턴스 생성/옵션/이벤트 관리
+ * 2) 그룹/아이템 DataSet 동기화
+ * 3) 하위 필요기술 Lazy Loading 및 연결선(Arrow) 처리
+ * 4) hover 상세 팝업 + context menu + 외부 이벤트 처리
+ */
 import {
  defineExpose,
  h,
@@ -82,8 +91,13 @@ const props = defineProps({
  useItemTooltip: { type: Boolean, default: true },
 });
 
-const loadedItems = new Set(); // 데이터 로딩 완료된 아이템 ID 캐시
-const pendingRequests = new Set(); // 현재 통신 중인 아이템 ID (중복 요청 방지)
+/**
+ * Lazy Loading 제어 캐시
+ * - loadedItems: 한 번 이상 하위 기술 로딩을 시도/완료한 부모 아이템 ID
+ * - pendingRequests: 현재 API 요청 진행 중인 부모 아이템 ID
+ */
+const loadedItems = new Set();
+const pendingRequests = new Set();
 
 const events = [
  "contextmenu",
@@ -128,8 +142,15 @@ watch(
 const changeInfoText = $msg('cmm.change-info-button', 'change info');
 
 const itemMargin = 3;
+/**
+ * 현재 화면에서 노출할 그룹 ID 집합
+ * hideEmptyGroups 모드/체크박스 토글 시 필터링 기준으로 사용
+ */
 const visibleGroups = ref(new Set());
 
+/**
+ * 그룹 트리에서 특정 그룹의 모든 하위 그룹 ID를 BFS로 수집
+ */
 const getSubGroupIds = (groupId) => {
  const allSubGroupIds = new Set();
  const queue = [groupId];
@@ -147,6 +168,9 @@ const getSubGroupIds = (groupId) => {
  return allSubGroupIds;
 };
 
+/**
+ * 그룹 체크박스 토글 시 해당 그룹 + 하위 그룹 노출 여부 동기화
+ */
 const toggleGroupVisibility = (groupId, isChecked) => {
  const groupIdsToToggle = getSubGroupIds(groupId);
  groupIdsToToggle.forEach((itemId) => {
@@ -160,10 +184,18 @@ const toggleGroupVisibility = (groupId, isChecked) => {
  reloadGroups(props.groups, false);
 };
 
+/**
+ * 이력 스위치 토글 핸들러 (추후 서버 연동 예정)
+ */
 const historyVisibility = (groupId, onHistory) => {
  console.log("historyVisibility ::", onHistory);
 };
 
+/**
+ * 초기 visibleGroups 구성
+ * - targetGroups가 있으면 해당 그룹 기준
+ * - 없으면 props.groups 기준
+ */
 const initializeVisibleGroups = (targetGroups) => {
  const g = targetGroups || props.groups;
  if (g && g.length > 0) {
@@ -318,29 +350,37 @@ const defaultOptions = {
  },
 };
 
+/**
+ * timelineRef: DOM 컨테이너 참조
+ * timeline: vis-timeline 인스턴스
+ */
 const timelineRef = ref(null);
 const timeline = shallowRef(null);
 const groups = null;
+/** 부모-자식 item 연결선 렌더러 인스턴스 */
 let timelineArrows = null;
+/** vis 내부에서 사용하는 DataSet (로컬 가공본) */
 const itemsDS = new DataSet([]);
 let groupsDS = new DataSet([]);
 const groupsStore = store.groupsDS;
 const itemsStore = store.itemsDS;
 
-// ref는 반응이 뭔가 느림...
-// 반응형 상태 설정 : 이 객체의 내용이 바뀌면, Vue가 그걸 감지해서 화면(UI)도 자동으로 변경하도록 처리 (객체 타입만 사용 가능)
+/**
+ * 화면 상호작용 상태
+ * - activeArrowItemIds: 현재 하위 기술을 펼친 부모 item ID 목록
+ */
 const timelineState = reactive({
  activeArrowItemIds: [],
 });
 
-//상세팝업
+/** 상세 팝업 관련 상태 */
 let hoverItem = null; // vis-hover class 추가 대상
 const popupPosition = ref({ top: 0, left: 0 });
 const isShowInfoModal = ref(false);
 const infoPopupRef = ref(null);
 const selectedItemData = ref(null);
 
-//우클릭 메뉴
+/** 우클릭 메뉴 상태 */
 const contextMenuRef = ref(null);
 const contextMenu = ref({
  show: false,
@@ -350,6 +390,10 @@ const contextMenu = ref({
  data: null, // 클릭된 아이템 또는 그룹 데이터
 });
 
+/**
+ * 상태 코드 -> CSS class 매핑
+ * 유효성/비교 상태를 동일한 렌더링 파이프라인에서 처리
+ */
 const getItemStatusClass = (itemStatus) => {
  let itemStausClass = null;
  //상태별 class 추가
@@ -385,6 +429,11 @@ const getItemStatusClass = (itemStatus) => {
  return itemStausClass;
 };
 
+/**
+ * item hover 시 상세 팝업 오픈
+ * - 그룹 경로 계산
+ * - 화면 경계 보정 후 팝업 좌표 설정
+ */
 const onItemHoverShowInfoPopup = async (eventProps) => {
  const { item, event } = eventProps;
  if (!item) return;
@@ -461,6 +510,7 @@ const onItemHoverShowInfoPopup = async (eventProps) => {
  }
 };
 
+/** hover 팝업 -> 상세 패널 전환 */
 const onOpenDetailPopup = async (itemData) => {
  // 정보 팝업을 닫고, 상세 팝업 슬라이드 처리
  closeInfoPopup();
@@ -470,6 +520,9 @@ const onOpenDetailPopup = async (itemData) => {
 // -----------------------------------------------
 // 화면 밖으로 넘어가지 않도록 포인트 계산
 // -----------------------------------------------
+/**
+ * 화면 밖으로 나가지 않도록 팝업 좌표를 보정
+ */
 const moveObjectPosition = (basePoint, objectRect, verticalGapSize = 0) => {
  const windowWidth = window.innerWidth; // 뷰포트 넓이
  const windowHeight = window.innerHeight; // 뷰포트 높이
@@ -497,6 +550,10 @@ const moveObjectPosition = (basePoint, objectRect, verticalGapSize = 0) => {
  };
 };
 
+/**
+ * contextmenu 이벤트 핸들러
+ * group/item/background 별 메뉴 모델 구성
+ */
 const handleContextMenu = async (eventProps) => {
  const { what, group, item, event } = eventProps;
  event.preventDefault(); // 기본 우클릭 메뉴 방지
@@ -555,6 +612,7 @@ const handleContextMenu = async (eventProps) => {
  }
 };
 
+/** 상세/컨텍스트 팝업 닫기 + hover 클래스 정리 */
 const closeInfoPopup = () => {
  if (store.selectedRoadId) return;
 
@@ -575,6 +633,7 @@ const closeInfoPopup = () => {
  store.selectedRoadId = null;
 };
 
+/** ESC 입력 시 선택/팝업 초기화 */
 const handleKeyDown = (event) => {
  if (event.key.toUpperCase() === "Escape".toUpperCase()) {
   store.selectedRoadId = null;
@@ -583,6 +642,7 @@ const handleKeyDown = (event) => {
  }
 };
 
+/** 팝업 외부 클릭 시 닫기 처리 */
 const handleClickOutside = (event) => {
  const infoPopupEl = infoPopupRef.value?.$el;
  if (infoPopupEl && !infoPopupEl.contains(event.target)) {
@@ -598,6 +658,11 @@ const handleClickOutside = (event) => {
  }
 };
 
+/**
+ * 하위 기술 트리 표시/숨김 진입점
+ * - 그룹 nested 상태 동기화
+ * - 연결선 표시/숨김 동기화
+ */
 const visibleSubTechTree = (visible, itemId) => {
  //선택한 Item의 group의 showNested = true 로 변경
  const selectedItem = props.allItems.find((i) => i.id === itemId);
@@ -612,10 +677,7 @@ const visibleSubTechTree = (visible, itemId) => {
  }
 };
 
-/**
-* 전체그룹 접기/펼치기
-* @param show
-*/
+/** 전체 그룹 접기/펼치기 */
 const toggleAllGroups = (show) => {
  if (!groupsDS) return;
 
@@ -675,11 +737,7 @@ const toggleAllGroups = (show) => {
  }
 };
 
-/**
-* 그룹 접기/펼치기 강제 처리 함수
-* {String|Number} parentId - 부모 그룹 ID
-* {Boolean} show - 보여줄지(true), 숨길지(false)
-*/
+/** 단일 부모 그룹 기준 nested 그룹 접기/펼치기 */
 const toggleNestedGroups = (parentId, show) => {
  // 1. 부모 그룹 데이터 가져오기
  const parent = groupsDS.get(parentId);
@@ -709,6 +767,9 @@ const makeSafeArrowId = (orgId) => {
  return String(orgId).replaceAll(/[^a-zA-Z0-9_-]/g, "_");
 };
 
+/**
+ * 선택 parent item 기준으로 child item과의 연결선 생성
+ */
 const viewTimelineArrows = (selectedId) => {
  if (!timelineArrows) {
   timelineArrows = new TimelineArrows(timeline.value, [], {
@@ -746,6 +807,11 @@ const viewTimelineArrows = (selectedId) => {
  }
 };
 
+/**
+ * 연결선 제거
+ * - selectedId가 있으면 해당 부모의 선만 제거
+ * - 없으면 전체 제거
+ */
 const removeTimeLineArrows = (selectedId) => {
  if (timelineArrows) {
   if (selectedId) {
@@ -764,6 +830,7 @@ const removeTimeLineArrows = (selectedId) => {
  }
 };
 
+/** 확대/축소 한계 계산 후 상위 컴포넌트에 상태 emit */
 const checkZoomLimits = () => {
  if (!timeline.value) return;
 
@@ -785,6 +852,7 @@ const checkZoomLimits = () => {
  });
 };
 
+/** viewMode(MONTH/QUARTER)에 따른 vis 옵션 생성 */
 const makeTimelineOptions = (viewType) => {
  const targetOption = viewType === "MONTH" ? monthOption : quarterOption;
  const currentOptions = toRaw({
@@ -818,6 +886,11 @@ const makeTimelineOptions = (viewType) => {
  return currentOptions;
 };
 
+/**
+ * 그룹 DataSet 재구성
+ * - 데이터 오염(showNested 등) 방어
+ * - invalid nestedGroups 제거
+ */
 const reloadGroups = (newGroups, initVisibleGroup = true) => {
  if (!newGroups) return;
 
@@ -864,6 +937,7 @@ const reloadGroups = (newGroups, initVisibleGroup = true) => {
  // reloadItems(props.allItems);
 };
 
+/** visibleGroups 기준으로 아이템 필터링 후 DataSet 반영 */
 const reloadItems = (newAllItems) => {
  perfLog.start("DATA_RELOAD_AND_FILTER");
  if (!newAllItems || !newAllItems.length > 0) {
@@ -885,8 +959,10 @@ const reloadItems = (newAllItems) => {
 };
 
 /**
-* 데이터 갱신 및 전체 로딩 시간 측정
-*/
+ * groups/items 전체 재로딩
+ * - hideEmptyGroups 조건 반영
+ * - sanitize groups + filter items + status name 매핑
+ */
 const reloadData = async () => {
  /* 데이터 갱신 시 캐시 초기화 */
  loadedItems.clear();
@@ -938,6 +1014,7 @@ const reloadData = async () => {
  });
 };
 
+/** 초기 1회 redraw 후 로딩스크린 제거 */
 const onInitialDraw = () => {
  const visTimelineEl = timelineRef.value?.querySelector(".vis-timeline");
  if (visTimelineEl) {
@@ -951,8 +1028,10 @@ const onInitialDraw = () => {
  timeline.value.off("redraw", onInitialDraw);
 };
 
-// 캡처링(true) 단계 처리 대상 이벤트
-// 'click' 뿐만 아니라 'mousedown', 'mouseup'도 막아야 확실합니다.
+/**
+ * 그룹 패널에서 특정 토글 이벤트를 강제 차단하기 위한 이벤트 목록
+ * (캡처링 단계에서 가로채서 기본 접힘 동작 방지)
+ */
 const toggleHandlerEvents = [
  "click",
  "mousedown",
@@ -960,7 +1039,10 @@ const toggleHandlerEvents = [
  "pointerdown",
  "pointerup",
 ];
-// 이벤트 핸들러 함수를 변수로 분리 (나중에 removeEventListener 하기 위해)
+/**
+ * subgroup 배경 클릭으로 인한 의도치 않은 토글을 차단
+ * - input/button/switch 같은 인터랙션 요소는 예외 처리
+ */
 const blockToggleHandler = (e) => {
  // 1. 클릭된 요소가 내가 막고 싶은 그룹(.vis-group-subgroup) 안에 있는지 확인
  const targetGroup = e.target.closest(".vis-group-subgroup");
@@ -981,7 +1063,7 @@ const blockToggleHandler = (e) => {
  }
 };
 
-// 공통코드 helper
+/** DD 코드명 조회 helper */
 const commCode = reactive(new Map());
 const getDdName = (masterCode, code) => {
  const group = commCode.get(masterCode);
@@ -993,8 +1075,10 @@ const getDdName = (masterCode, code) => {
 };
 
 /**
-* 아이템이 있는 그룹 + 자식이 있는 최상위 그룹 유지
-*/
+ * hideEmptyGroups=true 일 때 유효 그룹만 유지
+ * - 아이템이 속한 그룹 + 조상 경로 포함
+ * - 루트 기둥 그룹(자식 보유)은 유지
+ */
 const getFilteredGroups = (allGroups, allItems) => {
  const rawGroups = toRaw(allGroups);
  const rawItems = toRaw(allItems);
@@ -1043,6 +1127,12 @@ const getFilteredGroups = (allGroups, allItems) => {
 };
 
 onMounted(async () => {
+ // 초기화 순서:
+ // 1) visibleGroups/공통코드 초기화
+ // 2) DataSet 준비
+ // 3) Timeline 인스턴스 생성
+ // 4) 이벤트 바인딩
+ // 5) 초기 데이터 reload
  perfLog.start("TOTAL_ON_MOUNTED"); // [LOG 시작: 전체 마운트]
  // 초기 visibleGroups 설정 (이미 props에 데이터가 있는 경우 대응)
  initializeVisibleGroups();
@@ -1154,14 +1244,13 @@ onMounted(async () => {
   }
 
   /**
-  * lazy loading
-  * todo:
-  * 1. roadmapType이 제품군일 때 필요기술이 존재할 경우
-  * 2. 필요기술 조회 data-fetch 수행
-  * 3. roadmapType에 따라 보여줘야 할 popup 선택
-  * 4. items.add(조회된 필요기술 목록)
-  * 5. 해당 item에 focus()
-  */
+   * lazy loading 흐름
+   * 1) PRM + trmCount 확인
+   * 2) 중복요청 방지(pendingRequests)
+   * 3) store.getTrms 호출
+   * 4) child item 가공 후 DataSet 추가
+   * 5) loadedItems 갱신
+   */
   const selectedItem = itemsDS.get(itemId);
   // 제품(PRM) 타입이고 하위 기술(trmCount)이 있는 경우만 로직 수행
   if (selectedItem?.ptrmType === "PRM" && selectedItem.trmCount > 0) {
@@ -1246,6 +1335,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+ // 캡처링 이벤트/전역 이벤트/타임라인 인스턴스 모두 정리
  const leftPanel = timelineRef.value?.querySelector(".vis-panel.vis-left");
  if (leftPanel) {
   toggleHandlerEvents.forEach((evt) => {
@@ -1263,6 +1353,7 @@ onBeforeUnmount(() => {
 });
 
 /* watch **************************************/
+// 옵션/데이터/뷰모드/locale 변경 시 timeline 옵션/데이터를 동기화
 watch(
  () => props.options,
  (newOptions) => {

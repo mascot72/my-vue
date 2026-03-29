@@ -388,3 +388,102 @@ GET /api/workspace-roadmap/items/:itemId/trm
 - workspace Timeline에서 item 렌더링이 깨지지 않음
 - item 클릭 시 하위 tech 조회 및 표시 가능
 - 없는 `itemId` 요청 시 404 또는 empty 응답이 일관되며 프론트에서 예외 없이 처리됨
+
+---
+
+## 🧭 workspaceNew 운영 가이드
+
+현재 반영된 `workspaceNew` 구현의 파일 구조, 동작 개념, 핵심 변수 흐름을 정리합니다.
+
+### 1) 파일 구조
+
+```text
+src/
+├─ App.vue                                      # 상단 메뉴에 Work Roadmap New 링크
+├─ router/index.ts                              # /roadmap-workspace-new 라우트 등록
+├─ pages/
+│  └─ RoadmapWorkspaceNewPage.vue               # 전용 페이지(헤더/컨트롤/요약/상세패널)
+└─ domains/timeline/components/Roadmap/
+   ├─ workspaceNew/
+   │  ├─ Timeline.vue                           # vis-timeline 초기화/렌더/이벤트 연결
+   │  ├─ useTimeline.ts                         # 토글/캐시/화살표/포커스 핵심 로직
+   │  ├─ timeline.store.ts                      # 상태/데이터셋/API호출/캐시 flag
+   │  ├─ useTimelineApi.ts                      # /api/workspace-roadmap 호출 래퍼
+   │  ├─ useTimelineOption.ts                   # 타임라인 옵션/스케일 설정
+   │  └─ templates.ts                           # item/group HTML 템플릿(+/- 버튼 포함)
+   └─ visTimelineArrow.js                       # 부모-자식 연결선(arrow) 렌더러
+
+server/
+└─ src/
+   ├─ index.js                                  # /api/workspace-roadmap 라우트 등록
+   ├─ routes/workspaceRoadmap.js                # items/techs/trm endpoint
+   └─ data/workspaceRoadmapData.js              # 제품/기술 mock 데이터 + pagination/filter
+```
+
+### 2) 동작 개념
+
+1. `/roadmap-workspace-new` 진입  
+   → `RoadmapWorkspaceNewPage.vue` 로드  
+   → 내부에서 `workspaceNew/Timeline.vue` 렌더
+
+2. `Timeline.vue` 마운트  
+   → `store.loadItems()` 호출로 PRM(부모) 아이템 조회  
+   → `itemsDS`/`groupsDS` 바인딩 후 vis-timeline 생성
+
+3. 부모 아이템의 `+/-` 클릭  
+   → `onContainerClick()`에서 `.vis-item-add` 클릭만 감지  
+   → `visibleSubTechTree(true|false, parentId)` 실행
+
+4. 펼치기(`+`) 시  
+   - 캐시 ON: `restoreCachedSubTechItems()` 우선 시도 (재호출 없음)
+   - 캐시 미스: `store.getTrms()` API 호출 후 child item 생성/삽입
+   - child 삽입 후 `syncArrowForParent()`로 부모-자식 화살표 생성
+
+5. 접기(`-`) 시  
+   - `removeSubItems()`로 child item 제거
+   - `removeArrowForParent()`로 연결선 제거
+   - 캐시 OFF일 때만 `loadedItems`/캐시 삭제
+
+### 3) 핵심 변수/상태 흐름
+
+- `store.itemsDS` / `store.groupsDS`  
+  vis-timeline에 직접 연결되는 DataSet
+
+- `timelineState.activeArrowItemIds`  
+  펼쳐진 부모 item ID 목록
+
+- `loadedItems: Set<string>`  
+  하위 tech 로드 완료된 부모 ID 집합 (중복 fetch 방지)
+
+- `pendingRequests: Set<string>`  
+  동시 API 호출 방지 락
+
+- `store.useSubTechCache: boolean`  
+  캐시 기반 재오픈 동작 제어 flag
+  - `true`: 두 번째 토글부터 API 재호출 없이 재오픈
+  - `false`: 접기 시 캐시 제거, 다음 열기 때 재호출
+
+- `store.subTechCacheByParentId`  
+  부모 ID별 child tech 캐시 저장소
+
+- `timelineArrows`  
+  `VisTimelineArrows` 인스턴스. child 추가/삭제 시 선 동기화
+
+### 4) 주요 함수 흐름 맵
+
+- `Timeline.vue`
+  - `onMounted` → `loadItems` → `new Timeline(...)` → `setInstance`
+  - 클릭 이벤트 → `onContainerClick`
+
+- `useTimeline.ts`
+  - `onContainerClick` → `visibleSubTechTree`
+  - `visibleSubTechTree(true)` → `loadSubTechItems`
+  - `loadSubTechItems`
+    - cache hit: `restoreCachedSubTechItems`
+    - cache miss: `store.getTrms` → `itemsDS.add` → `store.cacheSubTechItems` → `syncArrowForParent`
+  - `visibleSubTechTree(false)` → `removeSubItems` + `removeArrowForParent`
+
+- `timeline.store.ts`
+  - `loadItems`: PRM 부모 로딩 + 그룹 파생 생성
+  - `getTrms`: TRM child API 응답을 timeline item 형태로 변환
+  - `setSubTechCacheEnabled`: 캐시 모드 ON/OFF 전환
