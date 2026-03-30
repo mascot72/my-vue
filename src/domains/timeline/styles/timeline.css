@@ -344,3 +344,40 @@
 .vis-timeline .vis-labelset .vis-label:hover {
   background: #f9fafb;
 }
+
+/* ============================================================
+   workspaceNew groupTemplate 전용 스타일
+   templates.ts 의 groupTemplate()에서 사용합니다.
+   인라인 style 대신 이 클래스를 사용하세요.
+   ============================================================ */
+
+/** 그룹 행 최상위 래퍼: 체크박스 + 이름 + 추가 컨트롤을 가로 배치 */
+.vis-group-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/** 체크박스 + 그룹 이름을 감싸는 레이블 영역 */
+.vis-group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem; /* 체크박스와 텍스트 사이 간격 */
+  min-width: 0;  /* flex 자식이 줄어들 수 있도록 허용 */
+}
+
+/** 그룹 텍스트 노출: 긴 이름은 말줄임표 처리 */
+.vis-group-label .group-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/** 조직 계층 추가 컨트롤 영역 (히스토리 스위치 등) */
+.vis-group-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0; /* 오른쪽 고정 */
+}

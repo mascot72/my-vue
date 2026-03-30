@@ -38,7 +38,21 @@ legacy workspace 관련 내용은 ../workspace/todo.md 에서 관리합니다.
 - [ ] Group 행 자체 collapse/expand UX 요구 여부 확정 및 반영
 
 ## 4) 다음 작업 후보
+### 4-1) 우선 작업 후보
+- [ ] A. /origin 폴더내에 구성 컴포넌트들의 종속성 구조 활용 디자인 가져오고 + /workspaceNew에서 정리된 기능을 개선된 기능으로 조합하기 (origin이 lagacy이기 때문에 모든 기능을 옮겨서 refactory 하려는 목적이다)
+  - [ ] 1. TimelineGroup.vue => template.ts에 groupTemplate에 적용
+  - [ ] 2. TimelineItem.vue => template.ts에 itemTemplate에 적용
+  - [ ] 3. ItemInfoPopup.vue => ItemHoverLayerPopup.vue에 적용
+  - [ ] 4. ItemDetailSlide.vue => RoadmapDetailsPanel.vue에 적용
+  - [ ] 5. 처리한 내용을 API_INTEGRATION.md에 적용해서 갱신
+  - [ ] 6. 처리한 내용으로 각 내용을 git commit
+- [ ] B. timeline.store.ts 개선
+  - [ ] 1. loadGroups 기능은 별도의 api가 존재하므로 연결한다: 위치 = /Roadmap에 존재하는 timeline.store.ts > loadGroups 항목과 똑같은 동작
+  - [ ] 2. origin 의 디자인 기능 + workspaceNew의 개선된 기능으로 조합하여 완성
+  - [ ] 3. 처리한 내용을 API_INTEGRATION.md에 적용해서 갱신
+  - [ ] 4. 처리한 내용으로 각 내용을 git commit
 
+### 4-2) 추후 작업 후보
 - [ ] 그룹 체크 상태 영속화(새로고침 후 유지) 필요 여부 검토
 - [ ] groupTemplate 인라인 style 제거 및 스타일 파일 분리
 - [ ] 서버에 org/groups 전용 endpoint 추가 시 useTimelineApi 파생 로직 제거

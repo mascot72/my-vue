@@ -618,3 +618,173 @@ server/
 
 - `workspaceNew/useTimelineApi.ts`, `workspaceNew/timeline.store.ts`, `workspaceNew/Timeline.vue`, `workspaceNew/useTimeline.ts`, `workspaceNew/templates.ts` 기준 타입 에러 없음
 - `vue-tsc --noEmit` 통과
+
+---
+
+### 5-5. 31 Mar 운영 업데이트 (Vue Proxy ↔ vis-data 충돌 방지 + 성능 개선 + 전체 JSDoc 주석화)
+
+#### A. Vue Proxy ↔ vis-data DataSet 충돌 근본 해결
+
+##### 문제 원인
+
+Pinia의 `state()` 반환 객체는 내부적으로 `reactive()`로 감싸져 **Proxy 객체**가 된다.  
+`new DataSet([])` 을 Pinia 상태에 직접 담으면 DataSet도 Proxy로 래핑되며 다음 문제가 발생한다:
+
+- `instanceof DataSet` 검사 실패 → vis-timeline 내부 오류
+- 변경 이벤트를 Vue와 DataSet이 **이중으로 추적** → 렌더링 불안정
+- `DataSet.get()` 반환값이 Proxy → spread 시 원본 필드 누락
+
+##### 해결 패턴
+
+**1. `markRaw` — DataSet 자체를 Proxy 추적에서 제외**
+
+```typescript
+// timeline.store.ts (workspaceNew)
+import { markRaw, reactive } from 'vue'
+
+const state = reactive({
+  groupsDS: markRaw(new DataSet([])),  // ✅ Vue Proxy 래핑 차단
+  itemsDS:  markRaw(new DataSet([])),  // ✅ vis-data 자체 이벤트 시스템 보존
+})
+```
+
+**2. `toRaw` — DataSet.add / update 전 Proxy 제거**
+
+```typescript
+// useTimeline.ts
+import { toRaw } from 'vue'
+
+// DataSet.get() 결과는 Proxy일 수 있으므로 toRaw 후 spread
+const current = store.groupsDS.get(groupId)
+store.groupsDS.update({ ...toRaw(current), checked })
+
+// props/스토어로 전달된 아이템도 같은 이유로 toRaw 처리
+const raw = toRaw(item)
+store.itemsDS.add({ ...raw, style: computedStyle })
+```
+
+```typescript
+// Timeline.vue
+import { toRaw } from 'vue'
+
+// reloadGroups: 그룹 배열 순회 시 각 항목을 toRaw 처리
+groups.forEach((group) => {
+  const raw = toRaw(group)
+  store.groupsDS.add({ ...raw, id, content })
+})
+```
+
+##### 대상 파일 및 변경 요약
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `workspaceNew/timeline.store.ts` | `markRaw(new DataSet([]))` — `groupsDS`, `itemsDS` 모두 적용 |
+| `workspaceNew/useTimeline.ts` | `setGroupChecked`, `setItemsVisibleByGroupIds`, `reloadData` 에 `toRaw()` 추가 |
+| `workspaceNew/Timeline.vue` | `reloadGroups` 내 `toRaw(group)` 추가 |
+
+---
+
+#### B. 성능 개선
+
+##### B-1. `expandAllSubItems` 직렬 → 병렬 API 호출
+
+```typescript
+// ❌ 이전: 순차 호출 (N개 TRM을 1개씩 await)
+for (const parent of parents) {
+  await loadSubTechItems(parent.id)
+}
+
+// ✅ 이후: 병렬 호출 (Promise.all로 N개 동시 실행)
+await Promise.all(
+  parents.map((parent) => loadSubTechItems(parent.id))
+)
+```
+
+- N개 부모 아이템이 있을 때 총 대기 시간: `N × T` → `max(T)` 로 단축
+- `pendingRequests` Set이 중복 요청을 여전히 차단하므로 안전
+
+##### B-2. `allItems` watch `deep: true` 제거
+
+```typescript
+// ❌ 이전: deep watch (대용량 배열 재귀 탐색 비용)
+watch(allItems, handler, { deep: true })
+
+// ✅ 이후: 참조 변경만 감지 (배열 교체 시점에만 반응)
+watch(allItems, handler)
+```
+
+- `allItems`는 스토어에서 배열 참조 자체가 교체될 때만 의미있는 변화가 생기므로 `deep` 불필요
+- 아이템 수가 수백~수천 개일 경우 every-render 비용 절감
+
+---
+
+#### C. `groupTemplate` 인라인 스타일 → CSS 클래스 분리
+
+템플릿 함수 내에 인라인 `style` 속성이 있으면 vis-timeline이 HTML을 문자열로 파싱할 때 불필요한 파싱 비용이 발생하고, 스타일 변경 시 코드와 스타일이 분산된다.
+
+```typescript
+// ❌ 이전: templates.ts 내 인라인 style
+`<div style="display:flex; align-items:center; justify-content:space-between; width:100%">`
+
+// ✅ 이후: CSS 클래스 사용
+`<div class="vis-group-inner">`
+```
+
+추가된 CSS 클래스 (`src/domains/timeline/styles/timeline.css`):
+
+```css
+/* templates.ts groupTemplate 레이아웃 클래스 */
+.vis-group-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.vis-group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.vis-group-label .group-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vis-group-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+```
+
+또한 `groupTemplate` 내에 있던 `@click.stop` Vue 디렉티브를 제거했다.  
+vis-timeline은 `innerHTML`로 HTML을 삽입하므로 Vue 컴파일러 디렉티브가 동작하지 않는다.  
+클릭 이벤트는 `Timeline.vue`의 `onContainerClick` 이벤트 위임으로 처리된다.
+
+---
+
+#### D. 전체 workspaceNew 파일 JSDoc 주석화
+
+다음 파일의 모든 타입, 헬퍼 함수, 액션, 컴포저블에 JSDoc 블록 주석을 추가했다.
+
+| 파일 | 주석 내용 |
+|------|-----------|
+| `timeline.store.ts` | 섹션 헤더(① DD Code ② 그룹 로드 ③ 하위기술 캐싱 ④ DataSet 조작), 모든 타입·액션 JSDoc |
+| `useTimeline.ts` | 파일 레벨 설명(Proxy vs vis-data 충돌 방지 원칙), 모든 함수 파라미터·반환값 JSDoc |
+| `templates.ts` | 파일 레벨 설명(이벤트 위임 전략), `itemTemplate`/`groupTemplate` 상세 문서 |
+| `Timeline.vue` | `onMounted` 단계별(1~6) 주석, `reloadGroups`, `allItems` watch 전략 설명 |
+
+JSDoc 작성 원칙:
+- `@param` — 파라미터 타입과 역할 명시
+- `@returns` — 반환값 타입과 의미 명시
+- `@remarks` — 동작 원리, 주의 사항, Vue Proxy 관련 side-effect 경고
+- 섹션 구분 헤더(`// ─────── ① ...`)로 시각적 그루핑
+
+---
+
+#### E. 검증 결과 (31 Mar)
+
+- 대상 파일 5개(`timeline.store.ts`, `useTimeline.ts`, `templates.ts`, `Timeline.vue`, `timeline.css`) 기준 타입 에러 없음
+- `vue-tsc --noEmit` 통과 (출력 없음)
