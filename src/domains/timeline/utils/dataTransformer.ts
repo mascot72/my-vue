@@ -269,3 +269,18 @@ export const transformBackendItemToTaskDetailHtml = (item: ItemCard): string => 
   const projectTask = toProjectTask(item)
   return generateTaskDetailHtml(projectTask)
 }
+
+/* langunage field 계산 (util) */
+export const toPascal = (str: string) => str.replace(/^[a-z]/, (char) => char.toUpperCase())
+
+/* start | end date로 변환 (util) */
+export const convertDate = (date: number | string, isLastDay: boolean = false) => {
+  const baseDate = new Date(date)
+  const dateRes = isLastDay ? new Date(baseDate.setMonth(baseDate.getMonth() + 1, 0)) : new Date(baseDate.setDate(1))
+  return dateRes.toISOString().substring(0, 10)
+}
+
+export const perfLog = {
+  start: (label: string) => console.time(`[PERF][${label}]`),
+  end: (label: string) => console.timeEnd(`[PERF][${label}]`),
+}
