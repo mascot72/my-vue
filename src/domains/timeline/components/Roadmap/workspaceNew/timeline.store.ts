@@ -38,6 +38,64 @@ type GroupNode = {
   order: number
 }
 
+const getOrgGroupId = (groupId: string) => {
+  const [orgSegment] = String(groupId).split('-')
+  return orgSegment ? `ORG-${orgSegment}` : ''
+}
+
+const buildGroupsFromItems = (items: Array<Record<string, unknown>>) => {
+  const orgMap = new Map<string, GroupNode>()
+  const productMap = new Map<string, GroupNode>()
+
+  items.forEach((item) => {
+    const groupId = String(item.group ?? item.roadOrgGroupProdLinkId ?? '')
+    if (!groupId) return
+
+    const orgId = getOrgGroupId(groupId)
+    if (orgId && !orgMap.has(orgId)) {
+      orgMap.set(orgId, {
+        id: orgId,
+        content: `조직 ${orgId.replace('ORG-', '')}`,
+        parent: undefined,
+        nestedGroups: [],
+        isOrganization: true,
+        isSubGroup: false,
+        hasChildren: true,
+        treeLevel: 0,
+        order: Number(orgId.replace('ORG-', '')) || orgMap.size + 1,
+      })
+    }
+
+    if (!productMap.has(groupId)) {
+      productMap.set(groupId, {
+        id: groupId,
+        content: groupId,
+        parent: orgId || undefined,
+        nestedGroups: [],
+        isOrganization: false,
+        isSubGroup: !!orgId,
+        hasChildren: false,
+        treeLevel: orgId ? 1 : 0,
+        order: Number(item.order ?? 0),
+      })
+    }
+  })
+
+  productMap.forEach((group) => {
+    if (!group.parent) return
+    const parent = orgMap.get(group.parent)
+    if (parent && !parent.nestedGroups.includes(group.id)) {
+      parent.nestedGroups.push(group.id)
+    }
+  })
+
+  const orgGroups = Array.from(orgMap.values())
+  const productGroups = Array.from(productMap.values())
+  const fullGroups = [...orgGroups, ...productGroups]
+
+  return { orgGroups, fullGroups }
+}
+
 // Bridge Storage: 여러 action이 공유하는 스토어 외부 선언
 const commCodeMap = reactive(new Map<string, DdCodeEntry[]>())
 const langCode = 'Ko' // Default language
@@ -86,6 +144,12 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
     async loadOrgGroups(payload: { roadmapType?: RoadmapType } = {}) {
       this.loading = true
       try {
+        if (this.items.length > 0) {
+          const { orgGroups } = buildGroupsFromItems(this.items)
+          this.orgGroups = orgGroups
+          return
+        }
+
         const data = await this.api.fetchOrgGroups?.(payload)
         if (Array.isArray(data)) {
           this.orgGroups = data.map((org: Record<string, unknown>) => ({
@@ -114,6 +178,15 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
       this.loading = true
       this.error = ''
       try {
+        if (this.items.length > 0) {
+          const { orgGroups, fullGroups } = buildGroupsFromItems(this.items)
+          this.orgGroups = orgGroups
+          this.groups = fullGroups
+          this.groupsDS.clear()
+          this.groupsDS.add(this.groups as never[])
+          return
+        }
+
         await this.loadOrgGroups(payload)
         const data = await this.api.fetchGroups?.(payload)
         if (!Array.isArray(data)) throw new Error('Invalid groups data')

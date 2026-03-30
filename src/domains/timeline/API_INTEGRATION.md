@@ -4,6 +4,15 @@
 
 API를 이용한 프로젝트 관리 타임라인 시스템의 구현 예제입니다. 이 구조는 **확장성**, **유지보수성**, **타입 안전성**을 고려하여 설계되었습니다.
 
+> 빠른 온보딩:
+> - workspace(legacy): [workspace TODO](./components/Roadmap/workspace/todo.md)
+> - workspaceNew: [workspaceNew TODO](./components/Roadmap/workspaceNew/todo.md)
+
+## 🔎 TOC
+
+- [workspace(legacy) 운영 가이드](#guide-workspace-legacy)
+- [workspaceNew 운영 가이드](#guide-workspacenew)
+
 ## 🏗️ Architecture
 
 ```
@@ -317,9 +326,17 @@ describe('useTimelineProjectData', () => {
 
 ---
 
-## 🧩 Roadmap Workspace Backend Spec (29 Mar)
+<a id="guide-workspace-legacy"></a>
+
+## 🧭 workspace(legacy) 운영 가이드
 
 workspace 하위 Timeline 리팩토링 코드에서 사용하는 백엔드 mock 계약입니다.
+
+> 체크리스트 바로가기:
+> - workspace(legacy): [workspace TODO](./components/Roadmap/workspace/todo.md)
+> - workspaceNew: [workspaceNew TODO](./components/Roadmap/workspaceNew/todo.md)
+
+### (29 Mar) Backend Spec
 
 ### 1) 목적
 
@@ -391,9 +408,15 @@ GET /api/workspace-roadmap/items/:itemId/trm
 
 ---
 
+<a id="guide-workspacenew"></a>
+
 ## 🧭 workspaceNew 운영 가이드
 
 현재 반영된 `workspaceNew` 구현의 파일 구조, 동작 개념, 핵심 변수 흐름을 정리합니다.
+
+> 체크리스트 바로가기:
+> - workspace(legacy): [workspace TODO](./components/Roadmap/workspace/todo.md)
+> - workspaceNew: [workspaceNew TODO](./components/Roadmap/workspaceNew/todo.md)
 
 ### 1) 파일 구조
 

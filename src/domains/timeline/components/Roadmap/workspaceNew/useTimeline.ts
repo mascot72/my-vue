@@ -2,7 +2,7 @@ import { nextTick, reactive, toRaw } from 'vue'
 // @ts-expect-error legacy JS module without type declarations
 import VisTimelineArrows from '../visTimelineArrow.js'
 
-export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
+export function useTimeline(props: any, emit: any, store: any, getDdName: any, getTechNameFn: any) {
   const itemsDS = store.itemsDS
   const groupsDS = store.groupsDS
   const timelineState = reactive({
