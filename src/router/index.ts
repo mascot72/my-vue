@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import RoadmapView from '@/pages/RoadmapView.vue'
 import RoadmapWorkspaceNewPage from '@/pages/RoadmapWorkspaceNewPage.vue'
-import TargetRoadmapPage from '@/pages/TargetRoadmapPage.vue'
+import TargetRoadmapView from '@/domains/timeline/components/Roadmap/target/RoadmapView.vue'
 // import RoadmapOriginLatestPage from '@/pages/RoadmapOriginLatestPage.vue'
 import TimelinePage from '@/pages/TimelinePage.vue'
 import TimelineExamplesPage from '@/pages/TimelineExamplesPage.vue'
@@ -52,7 +52,7 @@ const router = createRouter({
     {
       path: '/roadmap-target',
       name: 'roadmap-target',
-      component: TargetRoadmapPage,
+      component: TargetRoadmapView,
     },
     // {
     //   path: '/roadmap-origin-latest',
