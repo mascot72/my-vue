@@ -186,10 +186,10 @@
     <div class="info-popup-message" v-if="itemData.writingStatus === 'code001'">
       <dxplm-icon type="picto" icon="roadmap_lock" />
       <p v-if="locale === 'ko'">
-        현재 {{ "김만도" }}님이 편집 중 입니다. 동시 수정은 불가능합니다.
+        현재 {{ "홍길동" }}님이 편집 중 입니다. 동시 수정은 불가능합니다.
       </p>
       <p v-else>
-        {{ "Kim Man-do" }} is currently editing. Simultaneous editing is not
+        {{ "Hong Gil-dong" }} is currently editing. Simultaneous editing is not
         possible.
       </p>
     </div>

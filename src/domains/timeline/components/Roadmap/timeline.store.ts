@@ -1,22 +1,38 @@
 // timeline.store.ts
 import { toRaw, reactive } from "vue";
 import { defineStore } from "pinia";
-import { useTimelineApi } from "../api/timeline.api";
-import { convertDate } from "../utils/dataTransformaer";
-import type { TimelineState } from "../types/timeline";
+import { useTimelineApi } from "./workspaceNew/useTimelineApi";
 import { DataSet } from "vis-data";
-import { userInfo } from "../composables/ermmUtility";
-import { useDdStore } from "dxplm-component";
-import { toPascal } from "@/modules/tes/ermm/utils/dataTransformaer";
 
-const userData = userInfo();
-const langCode = userData.langCode;
+type RoadmapType = "PRM" | "TRM" | "CMM" | "COM";
+
+type TimelineState = {
+  groups: any[];
+  items: any[];
+  groupsDS: DataSet<any, "id">;
+  itemsDS: DataSet<any, "id">;
+  loading: boolean;
+  roadmapType: RoadmapType | "";
+  orgGroups: any[];
+  selectedRoadId: string | null;
+  getTechNameFn: ((code: string) => string) | null;
+};
+
+const langCode = "Ko";
+
+const convertDate = (value: string, endOfMonth = false) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  if (!endOfMonth) return date;
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+};
 /**
  * [Bridge Storage]
  * 스토어 외부에 선언하여 여러 action이 공유하며,
  * 한 번 로드된 데이터를 메모리에 유지(Caching)
  */
-const commCodeMap = reactive(new Map<string, any[]>());
+const commCodeMap = reactive(new Map<string, Array<Record<string, unknown>>>());
 
 // 조직별 제품군 제품목록 data-fetch + data transform
 async function getProductItems(api: any, groups: any[], payload: any) {
@@ -80,9 +96,15 @@ async function getProductItems(api: any, groups: any[], payload: any) {
 /** [Helper] 기술분류|공통기술 Items 가공 로직 */
 async function getRequireTechnologyItems(reqTechApi: any, payload: any) {
   // const { getTechClassificationName } = useMasterdata();
-  const res = await reqTechApi.fetchData(payload);
-  if (!res?.content) return [];
-  return res.content.map((item: any, index: number) => ({
+  const ids = Array.isArray(payload?.productItemIds) ? payload.productItemIds : [];
+  if (ids.length === 0) return [];
+
+  const roadmapType = payload?.roadmapType ?? "TRM";
+  const fetcher = roadmapType === "TRM" ? reqTechApi.fetchTrm : reqTechApi.fetchTechs;
+  const pages = await Promise.all(ids.map((itemId: string) => fetcher(itemId, payload)));
+  const content = pages.flat();
+
+  return content.map((item: any, index: number) => ({
     id: item.id,
     title: item["name" + langCode],
     titleEn: item["nameEn"],
@@ -139,13 +161,15 @@ export const useTimelineStore = defineStore("tes:timeline", {
     },
     /** * 브릿지 주입 Action: 외부 스토어 데이터를 내부 Map으로 복사 */
     async syncDdCode(masterCode: string) {
-      const ddStore = useDdStore();
       try {
-        // 외부 스토어에서 데이터 fetch
-        const commData = await ddStore.fetchActiveDdList(masterCode);
-        if (commData) {
+        const commData = await this.api.fetchDdCode?.(masterCode);
+        if (Array.isArray(commData)) {
+          const normalized = commData.map((item: Record<string, unknown>) => ({
+            ddValue: String(item.ddValue ?? item.code ?? ""),
+            nameKo: String(item.nameKo ?? item.codeNameKo ?? item.ddName ?? item.code ?? ""),
+          }));
           // 브릿지 스토리지(Map)에 주입
-          commCodeMap.set(masterCode, commData);
+          commCodeMap.set(masterCode, normalized);
         }
       } catch (error) {
         console.error(`DD Code Sync Error [${masterCode}]:`, error);
@@ -161,9 +185,7 @@ export const useTimelineStore = defineStore("tes:timeline", {
       const res = group.find((item: any) => item.ddValue === code);
       if (!res) return "";
 
-      const langSuffix = toPascal("ko");
-      // res['nameKo'] 또는 res['nameEn']을 동적으로 참조
-      return res[`name${langSuffix}`] || res.ddName || "";
+      return String(res.nameKo ?? res.ddName ?? "");
     },
     /** 조직그룹 마스터 조회 */
     async loadOrgGroups(payload: any) {
@@ -171,10 +193,10 @@ export const useTimelineStore = defineStore("tes:timeline", {
       this.orgGroups = (data || []).map((item: any) => ({
         id: item.id,
         code: item.code,
-        content: item[`name${langCode}`],
-        organizationNm: item[`name${langCode}`],
+        content: item[`name${langCode}`] ?? item.nameKo ?? item.nameEn ?? item.content,
+        organizationNm: item[`name${langCode}`] ?? item.nameKo ?? item.nameEn ?? item.content,
         level: 1,
-        order: item.seqIndex,
+        order: item.seqIndex ?? item.seqOrder ?? 0,
         nestedGroups: [],
         isOrganization: true,
         className: `vis-group-level-1`,
@@ -199,20 +221,21 @@ export const useTimelineStore = defineStore("tes:timeline", {
         const rawMapped = (data || [])
           .filter((g: any) => g.id !== null)
           .map((g: any) => {
-            const level = g.classLvl + 1;
+            const parentId = g.parentId ?? g.parent;
+            const level = typeof g.classLvl === "number" ? g.classLvl + 1 : parentId ? 2 : 1;
             return {
-              id: payload.roadmapType === "CMM" ? g.groupCode : g.id, // 공통그룹 일 경우는 groupCode를 id로 세팅하여 items연결하고, 그외에는 id그대로 사용한다.
-              parent: g.parentId,
-              content: g["name" + langCode],
+              id: payload.roadmapType === "CMM" ? (g.groupCode ?? g.id) : g.id,
+              parent: parentId,
+              content: g["name" + langCode] ?? g.nameKo ?? g.nameEn ?? g.content,
               level,
-              hasChildren: !!g.childIds,
-              organizationNm: g["orgName" + langCode],
+              hasChildren: !!(g.childIds ?? g.hasChildren),
+              organizationNm: g["orgName" + langCode] ?? g.organizationNm ?? "",
               nestedGroups: [] as (string | number)[],
-              isOrganization: level === 1, // 조직 여부
+              isOrganization: level === 1 || String(g.id).startsWith("ORG-"),
               className: `vis-group-level-${level}`,
-              order: g.seq,
+              order: g.seq ?? g.seqIndex ?? 0,
               isRoadmapProduct: false,
-              isSubGroup: false,
+              isSubGroup: !!parentId,
             };
           });
 

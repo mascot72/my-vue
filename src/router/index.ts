@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import RoadmapView from '@/pages/RoadmapView.vue'
 import RoadmapWorkspaceNewPage from '@/pages/RoadmapWorkspaceNewPage.vue'
+// import RoadmapOriginLatestPage from '@/pages/RoadmapOriginLatestPage.vue'
 import TimelinePage from '@/pages/TimelinePage.vue'
 import TimelineExamplesPage from '@/pages/TimelineExamplesPage.vue'
 import TimelineEnhancedPage from '@/pages/TimelineEnhancedPage.vue'
@@ -47,6 +48,11 @@ const router = createRouter({
       name: 'roadmap-workspace-new',
       component: RoadmapWorkspaceNewPage,
     },
+    // {
+    //   path: '/roadmap-origin-latest',
+    //   name: 'roadmap-origin-latest',
+    //   component: RoadmapOriginLatestPage,
+    // },
   ],
 })
 
