@@ -329,7 +329,20 @@ onMounted(async () => {
     if (!properties.items?.length) return
     const selectedId = properties.items[0]
     const item = itemsDS.get(selectedId) as RecordAny | null
-    if (item) onOpenDetail(item)
+    if (item) {
+      // ⭐ 수정: detail panel은 popup에서만 열기
+      // Item Card 클릭 시 popup을 pinned 상태로만 변경
+      // detail panel은 popup의 "상세조회" 버튼에서만 열기
+      const currentPopupItem = popupItem.value
+      if (currentPopupItem && currentPopupItem.id === item.id) {
+        // 같은 항목 다시 클릭: popup pinned 상태 유지
+        return
+      }
+      // 다른 항목 클릭: popup만 업데이트 (detail panel은 열지 않음)
+      popupState.pinned = true
+      popupState.show = true
+      popupItem.value = item
+    }
   })
 
   timelineInstance.on('itemover', handleTimelineItemOver)
