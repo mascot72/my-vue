@@ -829,37 +829,106 @@ JSDoc 작성 원칙:
 
 ### 1) 파일 구조
 
+**종속성 구조** (origin 기준 유지):
+```
+RoadmapView.vue
+  └─ TimelineRoadmap.vue
+      └─ Timeline.vue
+```
+
+**상세 파일 배치**:
 ```text
 src/domains/timeline/components/Roadmap/target/
-├─ templates.ts                 # origin TimelineGroup/TimelineItem HTML 디자인 이식
-├─ ItemHoverLayerPopup.vue      # origin ItemInfoPopup 기반 hover 상세 팝업
-├─ RoadmapDetailsPanel.vue      # origin ItemDetailSlide 구조를 표준 Vue 패널로 이식
-├─ ContextMenu.vue              # origin VisContextMenu 기반 우클릭 메뉴
-└─ Timeline.vue                 # vis-timeline 통합 컴포넌트 (popup/menu/detail 연결)
+├─ RoadmapView.vue             # ⭐ B-2: Entry page (검색/필터 UI)
+├─ TimelineRoadmap.vue         # ⭐ B-2: Timeline 제어 헤더 (접기/펼치기, view mode 등)
+├─ Timeline.vue                # B-8: vis-timeline 통합 컴포넌트 (popup/menu/detail 연결)
+├─ templates.ts                # B-3: 개선된 groupTemplate + itemTemplate (collapse/checkbox 분리)
+├─ ItemHoverLayerPopup.vue     # B-5: origin ItemInfoPopup 기반 hover 상세 팝업
+├─ RoadmapDetailsPanel.vue     # B-6: origin ItemDetailSlide를 표준 Vue 패널로 이식
+└─ ContextMenu.vue             # B-7: origin VisContextMenu 기반 우클릭 메뉴
 
 src/pages/
-└─ TargetRoadmapPage.vue        # target 엔트리 페이지
+└─ TargetRoadmapPage.vue       # 과도 페이지 (삭제 예정 → RoadmapView.vue로 통합)
 
 src/router/index.ts
-└─ /roadmap-target              # 라우트 등록
+└─ /roadmap-target → RoadmapView.vue    # B-2: 라우트 연결
 ```
 
 ### 2) 구현 원칙
 
+#### **B-2: Entry Page & Component Hierarchy**
+- RoadmapView.vue는 검색/필터 UI 제공 (origin/latestRmView.vue 기반)
+- TimelineRoadmap.vue는 타임라인 제어 버튼 제공 (접기/펼치기, view mode, zoom 등)
+- 종속성 구조 유지: RoadmapView → TimelineRoadmap → Timeline (origin 구조 동일)
+- router 연결: `/roadmap-target` → RoadmapView.vue
+
+#### **B-3: Group Template - Collapse/Checkbox 분리**
+- **Group 라인 클릭**: vis-timeline 기본 collapse/expand 동작 (네이티브)
+- **Checkbox 클릭**: items visibility toggle (data-id 이벤트 위임 처리)
+- groupTemplate에서 두 동작을 구분하여 구현
+  - `.vis-group-label`: 그룹명 + 기본 collapse 트리거
+  - `.group-toggle-input.vis-group-check`: checkbox visibility toggle용 (data-id로 event delegation)
+
+#### **공통 원칙**
 - **UI 출처 고정**: 마크업 구조는 origin 컴포넌트의 class/레이아웃 기준 유지
 - **로직 재사용**: 데이터/토글/화살표/hover 상태 관리는 workspaceNew composable 재사용
-- **이벤트 위임**: vis-timeline 템플릿은 `innerHTML` 렌더링이므로 `data-action` 기반 클릭 위임 사용
+- **이벤트 위임**: vis-timeline 템플릿은 `innerHTML` 렌더링이므로 `data-action`, `data-id` 기반 클릭 위임 사용
 - **타입 안전성 유지**: target 컴포넌트는 Vue 3 `script setup + TypeScript` 기반으로 작성
 
 ### 3) 주요 동작
 
+#### **B-2: Entry Page & Control Flow**
+```
+RoadmapView.vue
+├─ 검색/필터 UI: roadmapType, statusCode, organizations
+├─ 상태 표시 필터: statusPlan, statusExec, statusNBiz
+└─ TimelineRoadmap 컴포넌트 렌더링
+    └─ 제어 헤더
+        ├─ 그룹 전체 펼치기/접기 버튼
+        ├─ View mode 선택 (제품군/기술분류체계/공통기술유형)
+        ├─ Today 버튼 (현재 날짜로 포커스)
+        ├─ 월/분기 view mode 토글
+        └─ Zoom 제어 (확대/축소)
+    └─ Timeline.vue 본체
+```
+
+#### **B-3: Group Template - Collapse & Checkbox**
+- **그룹 라인 클릭** (collapse/expand):
+  - vis-timeline 기본 동작: group의 sub-group/items 포함/제외
+  - groupTemplate에서는 별도 트리거 불필요 (vis-timeline 핸들)
+
+- **Checkbox 클릭** (visibility toggle):
+  - data-id 기반 이벤트 위임: `Timeline.vue > onContainerClick()`
+  - 해당 그룹 아래 아이템들의 표시/숨김 토글 (itemsDS 수정)
+  - 체크 상태는 group의 `checked` 필드로 유지
+
+#### **원본 동작 (변경 없음)**
 - 아이템 hover: `ItemHoverLayerPopup.vue`
 - 아이템 클릭: 상세 패널(`RoadmapDetailsPanel.vue`) 오픈
 - 아이템 우클릭: `ContextMenu.vue` 오픈
-- 그룹/아이템 템플릿: `target/templates.ts`의 `groupTemplate`, `itemTemplate` 사용
+- +/- 버튼: 하위기술 토글 및 화살표 동기화
 
 ### 4) 운영 체크포인트
 
-- group 체크박스 토글 시 하위 그룹 아이템 표시/숨김이 정상 동작하는지 확인
-- PRM 아이템의 `+/-` 버튼으로 하위기술 로딩/접기 및 화살표가 정상 동작하는지 확인
-- hover popup과 detail panel 동시 사용 시 포커스/닫기 이벤트 충돌이 없는지 확인
+#### **B-2: Entry Page & Routing**
+- [ ] RoadmapView.vue 로드 시 검색/필터 기본 상태 정상 표시
+- [ ] TimelineRoadmap 헤더의 각 버튼 동작 확인:
+  - [ ] "전체 펼치기" → 모든 그룹/서브그룹 전개
+  - [ ] "전체 접기" → 모든 그룹/서브그룹 축소
+  - [ ] View mode 버튼 → 선택 UI 순환 변경
+  - [ ] Today 버튼 → 현재 날짜로 스크롤
+  - [ ] 월/분기 토글 → timeline granularity 변경
+- [ ] `/roadmap-target` 라우트 정상 동작
+
+#### **B-3: Group Collapse & Checkbox**
+- [ ] 그룹 라인 클릭 시 sub-group/items collapse/expand 정상 동작
+- [ ] 그룹 checkbox 토글 시:
+  - [ ] items 표시/숨김 정상
+  - [ ] 체크 상태 UI 유지
+  - [ ] sub-group 아이템도 함께 토글
+- [ ] collapse와 checkbox 동작 충돌 없음 (독립적 동작)
+
+#### **원본 체크포인트 (변경 없음)**
+- [ ] group 체크박스 토글 시 하위 그룹 아이템 표시/숨김이 정상 동작하는지 확인
+- [ ] PRM 아이템의 `+/-` 버튼으로 하위기술 로딩/접기 및 화살표가 정상 동작하는지 확인
+- [ ] hover popup과 detail panel 동시 사용 시 포커스/닫기 이벤트 충돌이 없는지 확인
