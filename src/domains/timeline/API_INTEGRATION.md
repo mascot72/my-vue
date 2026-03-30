@@ -12,6 +12,7 @@ API를 이용한 프로젝트 관리 타임라인 시스템의 구현 예제입�
 
 - [workspace(legacy) 운영 가이드](#guide-workspace-legacy)
 - [workspaceNew 운영 가이드](#guide-workspacenew)
+- [target 운영 가이드](#guide-target)
 
 ## 🏗️ Architecture
 
@@ -788,3 +789,77 @@ JSDoc 작성 원칙:
 
 - 대상 파일 5개(`timeline.store.ts`, `useTimeline.ts`, `templates.ts`, `Timeline.vue`, `timeline.css`) 기준 타입 에러 없음
 - `vue-tsc --noEmit` 통과 (출력 없음)
+
+---
+
+### 5-6. 31 Mar 추가 업데이트 (A-1 통합 + target 폴더 구성)
+
+#### A. A-1: `workspaceNew/timeline.store.ts` 통합 반영
+
+`Roadmap/timeline.store.ts`의 핵심 동작을 `workspaceNew/timeline.store.ts`에 이식했습니다.
+
+- `RoadmapType` 확장: `'PRM' | 'TRM' | 'COM'` → `'PRM' | 'TRM' | 'CMM' | 'COM'`
+- `getProductItems()` 추가: PRM 아이템 필드 매핑 통합
+- `getRequireTechnologyItems()` 추가: TRM/CMM/COM 아이템 로딩 통합
+- 상태 필드 추가: `selectedRoadId`, `getTechNameFn`
+- 액션 추가: `setTechNameFn(fn)`, `reset()`
+- `loadGroups()` 개선:
+  - CMM 분기(`groupCode`/`id`) 지원
+  - O(n) parent-child 매핑
+  - `toRaw()` 적용으로 DataSet 정합성 강화
+- `loadItems()` 개선:
+  - PRM → `getProductItems`
+  - TRM/CMM/COM → `getRequireTechnologyItems`
+
+연관 타입 업데이트:
+
+- `workspaceNew/useTimelineApi.ts`의 `QueryPayload.roadmapType`도 `'CMM'` 포함으로 확장
+
+검증:
+
+- `vue-tsc --noEmit` 통과
+
+---
+
+<a id="guide-target"></a>
+
+## 🧭 target 운영 가이드
+
+`target`은 **origin 디자인** + **workspaceNew 개선 로직**을 결합한 최종 통합 영역입니다.
+
+### 1) 파일 구조
+
+```text
+src/domains/timeline/components/Roadmap/target/
+├─ templates.ts                 # origin TimelineGroup/TimelineItem HTML 디자인 이식
+├─ ItemHoverLayerPopup.vue      # origin ItemInfoPopup 기반 hover 상세 팝업
+├─ RoadmapDetailsPanel.vue      # origin ItemDetailSlide 구조를 표준 Vue 패널로 이식
+├─ ContextMenu.vue              # origin VisContextMenu 기반 우클릭 메뉴
+└─ Timeline.vue                 # vis-timeline 통합 컴포넌트 (popup/menu/detail 연결)
+
+src/pages/
+└─ TargetRoadmapPage.vue        # target 엔트리 페이지
+
+src/router/index.ts
+└─ /roadmap-target              # 라우트 등록
+```
+
+### 2) 구현 원칙
+
+- **UI 출처 고정**: 마크업 구조는 origin 컴포넌트의 class/레이아웃 기준 유지
+- **로직 재사용**: 데이터/토글/화살표/hover 상태 관리는 workspaceNew composable 재사용
+- **이벤트 위임**: vis-timeline 템플릿은 `innerHTML` 렌더링이므로 `data-action` 기반 클릭 위임 사용
+- **타입 안전성 유지**: target 컴포넌트는 Vue 3 `script setup + TypeScript` 기반으로 작성
+
+### 3) 주요 동작
+
+- 아이템 hover: `ItemHoverLayerPopup.vue`
+- 아이템 클릭: 상세 패널(`RoadmapDetailsPanel.vue`) 오픈
+- 아이템 우클릭: `ContextMenu.vue` 오픈
+- 그룹/아이템 템플릿: `target/templates.ts`의 `groupTemplate`, `itemTemplate` 사용
+
+### 4) 운영 체크포인트
+
+- group 체크박스 토글 시 하위 그룹 아이템 표시/숨김이 정상 동작하는지 확인
+- PRM 아이템의 `+/-` 버튼으로 하위기술 로딩/접기 및 화살표가 정상 동작하는지 확인
+- hover popup과 detail panel 동시 사용 시 포커스/닫기 이벤트 충돌이 없는지 확인

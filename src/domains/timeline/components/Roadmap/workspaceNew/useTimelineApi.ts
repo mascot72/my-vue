@@ -1,7 +1,7 @@
 import { api } from '@/shared/api/axios'
 
 type QueryPayload = {
-  roadmapType?: 'PRM' | 'TRM' | 'COM'
+  roadmapType?: 'PRM' | 'TRM' | 'CMM' | 'COM'
   includeInactive?: boolean
   page?: number
   size?: number

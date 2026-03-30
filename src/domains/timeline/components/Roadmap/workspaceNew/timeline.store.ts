@@ -15,8 +15,8 @@ import { DataSet } from 'vis-data'
 import { markRaw, reactive } from 'vue'
 import { useTimelineApi } from './useTimelineApi'
 
-/** 로드맵 유형. PRM=제품 로드맵, TRM=기술 로드맵, COM=공통 */
-type RoadmapType = 'PRM' | 'TRM' | 'COM'
+/** 로드맵 유형. PRM=제품 로드맵, TRM=기술 로드맵(필요기술), CMM/COM=공통기술 */
+type RoadmapType = 'PRM' | 'TRM' | 'CMM' | 'COM'
 
 /**
  * 날짜 문자열을 Date 객체로 변환합니다.
@@ -157,6 +157,130 @@ const commCodeMap = reactive(new Map<string, DdCodeEntry[]>())
 /** 기본 언어 코드. nameByLang()에서 사용합니다. */
 const langCode = 'Ko'
 
+/**
+ * 조직별 제품군 아이템을 API에서 조회하고 vis-timeline 호환 형식으로 변환합니다.
+ * /Roadmap/timeline.store.ts의 getProductItems 헬퍼와 동일한 필드 매핑.
+ *
+ * @param api - useTimelineApi() 반환값
+ * @param groups - 현재 로드된 그룹 배열 (조직명 매핑에 사용)
+ * @param payload - fetchItems에 전달할 파라미터
+ * @param getDdNameFn - 공통코드 명칭 조회 함수
+ */
+async function getProductItems(
+  api: ReturnType<typeof useTimelineApi>,
+  groups: Array<Record<string, unknown>>,
+  payload: Record<string, unknown>,
+  getDdNameFn: (masterCode: string, code: string) => string,
+): Promise<Array<Record<string, unknown>>> {
+  const res = await api.fetchItems(payload)
+  return ((res || []) as Array<Record<string, unknown>>)
+    .filter((item) => !!nameByLang(item))
+    .map((item) => {
+      const currGroup = groups.find((g) => g.id === item.roadOrgGroupProdLinkId)
+      return {
+        id: String(item.id),
+        itemLink: String(item.id),
+        title: nameByLang(item),
+        titleEn: String(item.nameEn ?? ''),
+        content: nameByLang(item),
+        start: convertDate(String(item.devStartPlanMonth ?? '')),
+        end: convertDate(String(item.devEndPlanMonth ?? ''), true),
+        group: String(item.roadOrgGroupProdLinkId ?? ''),
+        order: Number(item.seqIndex ?? 0),
+        className: 'timeline-item-active priority-high',
+        itemStatusCode: String(item.itemStatusCode ?? ''),
+        itemStatusName: getDdNameFn('TES.ROAD_STATUS', String(item.itemStatusCode ?? '')),
+        itemProgStatusCode: String(item.itemProgStatusCode ?? ''),
+        prevGenDiff: String(item.prevGenDiff ?? ''),
+        vehicle: String(item.vehicleTypeCode ?? ''),
+        user: String(item.updateUserId ?? ''),
+        organizationNm: String((currGroup as Record<string, unknown>)?.organizationNm ?? currGroup?.content ?? item.roadOrgGroupProdLinkId ?? ''),
+        customerCode: String(item.customerCode ?? ''),
+        carModel: String(item.vehicleTypeCode ?? ''),
+        roadId: String(item.roadId ?? ''),
+        sopPlanMonth: String(item.sopPlanMonth ?? ''),
+        updateDate: String(item.updateDate ?? ''),
+        lastApprovalDate: null,
+        roadmapType: payload.roadmapType,
+        validityStatusNm: getDdNameFn('TES.ROAD_STATUS', String(item.itemStatusCode ?? '')),
+        validityStatus: String(item.itemStatusCode ?? ''),
+        trmCount: Number(item.trmCount ?? 0),
+        hasTrm: Number(item.trmCount ?? 0) > 0,
+        ptrmType: 'PRM',
+        priority: Number(item.seqIndex ?? 0),
+        techGroup: nameByLang(item),
+        techGroupEn: '',
+        techGroupZn: '',
+        techItem: nameByLang(item),
+        techItemEn: '',
+        techItemZh: '',
+        writingStatusNm: '작성완료',
+        writingStatus: 'code002',
+        projectPlanningStatusNm: '과제계획 미수립',
+        projectPlanningStatus: 'code007',
+        projectExecutionStatusNm: '실행 미연계',
+        projectExecutionStatus: 'code011',
+        newBusinessTypeNm: '',
+        newBusinessType: '',
+      }
+    })
+}
+
+/**
+ * 기술분류/공통기술(TRM/CMM/COM) 아이템을 조회하고 vis-timeline 호환 형식으로 변환합니다.
+ * /Roadmap/timeline.store.ts의 getRequireTechnologyItems 헬퍼와 동일한 필드 매핑.
+ *
+ * @param api - useTimelineApi() 반환값
+ * @param payload - roadmapType, productItemIds 등
+ */
+async function getRequireTechnologyItems(
+  api: ReturnType<typeof useTimelineApi>,
+  payload: Record<string, unknown>,
+): Promise<Array<Record<string, unknown>>> {
+  const ids = Array.isArray(payload.productItemIds) ? payload.productItemIds as string[] : []
+  if (ids.length === 0) return []
+
+  const roadmapType = String(payload.roadmapType ?? 'TRM')
+  const pages = await Promise.all(
+    ids.map((itemId: string) =>
+      api.fetchTrm(itemId, { ...payload, roadmapType: roadmapType as 'TRM' | 'CMM' | 'COM' }),
+    ),
+  )
+  const content = pages.flat() as Array<Record<string, unknown>>
+
+  return content.map((item, index) => ({
+    id: String(item.id),
+    title: nameByLang(item),
+    titleEn: String(item.nameEn ?? ''),
+    content: nameByLang(item),
+    start: convertDate(String(item.devStartPlanMonth ?? '')),
+    end: convertDate(String(item.devEndPlanMonth ?? ''), true),
+    group: roadmapType === 'TRM'
+      ? String(item.technologyClassLv3Id ?? '')
+      : String(item.comTechTypeCode ?? ''),
+    order: index,
+    className: 'timeline-item-active priority-high',
+    comTechTypeId: String(item.comTechTypeId ?? ''),
+    itemStatusCode: String(item.techStatusCode ?? ''),
+    itemProgStatusCode: String(item.techProgStatusCode ?? ''),
+    technologyClassLv1Id: String(item.technologyClassLv1Id ?? ''),
+    technologyClassLv2Id: String(item.technologyClassLv2Id ?? ''),
+    technologyClassLv3Id: String(item.technologyClassLv3Id ?? ''),
+    techTypeCode: String(item.techTypeCode ?? ''),
+    vehicle: String(item.vehicleTypeCode ?? ''),
+    user: String(item.updateUserId ?? ''),
+    organizationNm: String(item[`orgGroupName${langCode}`] ?? ''),
+    roadId: String(item.roadId ?? ''),
+    updateDate: String(item.updateDate ?? ''),
+    roadmapType,
+    validityStatus: String(item.techStatusCode ?? ''),
+    ptrmType: roadmapType,
+    hasTrm: false,
+    writingStatus: 'code002',
+    writingStatusNm: '작성완료',
+  }))
+}
+
 export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:timeline', {
   state: () => ({
     /**
@@ -177,6 +301,10 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
     groupsDS: markRaw(new DataSet([])),
     itemsDS: markRaw(new DataSet([])),
     orgGroups: [] as Array<Record<string, unknown>>,
+    /** 현재 선택된 로드맵 ID. 상세 조회/등록 연동에 사용합니다. */
+    selectedRoadId: null as string | null,
+    /** 기술분류 명칭 조회 함수. 외부(마스터데이터 스토어)에서 주입합니다. */
+    getTechNameFn: null as ((code: string) => string) | null,
     useSubTechCache: true,
     subTechCacheByParentId: {} as Record<string, Array<Record<string, unknown>>>,
     groupItemCacheByGroupId: {} as Record<string, Array<Record<string, unknown>>>,
@@ -211,6 +339,15 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
      *
      * @param masterCode - 조회할 마스터 코드 (예: 'TES.ROAD_STATUS')
      */
+    /**
+     * 기술분류 명칭 조회 함수를 외부에서 주입합니다.
+     * useMasterdata 등 외부 composable의 함수를 store에 연결할 때 사용합니다.
+     * @param fn - 기술분류 ID → 명칭 변환 함수
+     */
+    setTechNameFn(fn: (code: string) => string) {
+      this.getTechNameFn = fn
+    },
+
     async syncDdCode(masterCode: string) {
       try {
         const data = await this.api.fetchDdCode?.(masterCode)
@@ -262,7 +399,7 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
           return
         }
 
-        const data = await this.api.fetchOrgGroups?.(payload)
+        const data = await this.api.fetchOrgGroups?.(payload as Record<string, unknown> as never)
         if (Array.isArray(data)) {
           this.orgGroups = data.map((org: Record<string, unknown>) => ({
             id: String(org.id),
@@ -314,32 +451,56 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
           return
         }
 
-        await this.loadOrgGroups(payload)
-        const data = await this.api.fetchGroups?.(payload)
+        const roadmapType = payload.roadmapType ?? this.roadmapType
+
+        // PRM일 때만 조직 그룹 마스터를 별도 조회
+        if (roadmapType === 'PRM' && this.orgGroups.length === 0) {
+          await this.loadOrgGroups(payload)
+        }
+
+        const data = await this.api.fetchGroups?.(payload as Record<string, unknown> as never)
         if (!Array.isArray(data)) throw new Error('Invalid groups data')
 
-        const fullGroups: GroupNode[] = [
-          ...(this.orgGroups as GroupNode[]),
-          ...data.map((group: Record<string, unknown>): GroupNode => ({
-            id: String(group.id),
-            content: nameByLang(group),
-            parent: group.parent ? String(group.parent) : undefined,
-            nestedGroups: [],
-            isOrganization: false,
-            isSubGroup: !!group.parent,
-            hasChildren: false,
-            treeLevel: group.parent ? 1 : 0,
-            order: Number(group.seqIndex ?? 0),
-          })),
-        ]
+        // CMM 여부에 따라 ID 필드 분기 (Roadmap/timeline.store.ts와 동일)
+        const rawMapped = data
+          .filter((g: Record<string, unknown>) => g.id !== null)
+          .map((g: Record<string, unknown>) => {
+            const parentId = (g.parentId ?? g.parent) as string | undefined
+            const level = typeof g.classLvl === 'number' ? g.classLvl + 1 : parentId ? 2 : 1
+            return {
+              id: roadmapType === 'CMM' ? String(g.groupCode ?? g.id) : String(g.id),
+              parent: parentId ? String(parentId) : undefined,
+              content: nameByLang(g),
+              level,
+              hasChildren: !!(g.childIds ?? g.hasChildren),
+              organizationNm: String(g[`orgName${langCode}`] ?? g.organizationNm ?? ''),
+              nestedGroups: [] as string[],
+              isOrganization: level === 1 || String(g.id).startsWith('ORG-'),
+              className: `vis-group-level-${level}`,
+              order: Number(g.seq ?? g.seqIndex ?? 0),
+              isRoadmapProduct: false,
+              isSubGroup: !!parentId,
+            }
+          })
 
-        // 트리 구조 빌드: 부모-자식 관계 설정
-        const groupMap = new Map(fullGroups.map((g) => [String(g.id), g]))
+        // 중복 제거
+        const uniqueTreeData = Array.from(
+          new Map(rawMapped.map((item) => [item.id, item])).values(),
+        )
+
+        // PRM: org 그룹과 제품 그룹 합산 / 나머지: 기술분류 그룹만
+        const { toRaw: toRawVue } = await import('vue')
+        const fullGroups = roadmapType === 'PRM'
+          ? [...toRawVue(this.orgGroups) as typeof uniqueTreeData, ...uniqueTreeData]
+          : uniqueTreeData
+
+        // O(n) 부모-자식 관계 매핑
+        const groupMap = new Map(fullGroups.map((g) => [g.id, g]))
         fullGroups.forEach((group) => {
-          if (group.parent && groupMap.has(String(group.parent))) {
-            const parent = groupMap.get(String(group.parent))
-            if (parent && !parent.nestedGroups.includes(String(group.id))) {
-              parent.nestedGroups.push(String(group.id))
+          if (group.parent && groupMap.has(group.parent)) {
+            const parent = groupMap.get(group.parent)!
+            if (!parent.nestedGroups.includes(group.id)) {
+              parent.nestedGroups.push(group.id)
             }
           }
         })
@@ -496,75 +657,60 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
      * @param payload.roadmapType - 로드맵 유형 (기본: 현재 store 값)
      * @param payload.includeInactive - 비활성 아이템 포함 여부
      */
-    async loadItems(payload: { roadmapType?: RoadmapType; includeInactive?: boolean } = {}) {
+    async loadItems(payload: { roadmapType?: RoadmapType; includeInactive?: boolean; productItemIds?: string[] } = {}) {
       this.loading = true
       this.error = ''
       try {
         this.roadmapType = payload.roadmapType ?? this.roadmapType
-        const res = await this.api.fetchItems({
-          roadmapType: this.roadmapType,
-          includeInactive: payload.includeInactive ?? false,
-          page: 0,
-          size: 10000,
-        })
+        await this.syncDdCode('TES.ROAD_STATUS')
 
-        const mapped: Array<Record<string, unknown>> = ((res || []) as Array<Record<string, unknown>>).map((item) => ({
-          id: String(item.id),
-          itemLink: String(item.id),
-          title: nameByLang(item),
-          titleEn: String(item.nameEn ?? ''),
-          content: nameByLang(item),
-          start: convertDate(String(item.devStartPlanMonth ?? '')),
-          end: convertDate(String(item.devEndPlanMonth ?? ''), true),
-          group: String(item.roadOrgGroupProdLinkId ?? ''),
-          order: Number(item.seqIndex ?? 0),
-          className: 'timeline-item-active priority-high',
-          itemStatusCode: String(item.itemStatusCode ?? ''),
-          itemProgStatusCode: String(item.itemProgStatusCode ?? ''),
-          prevGenDiff: String(item.prevGenDiff ?? ''),
-          vehicle: String(item.vehicleTypeCode ?? ''),
-          user: String(item.updateUserId ?? ''),
-          organizationNm: String(item.roadOrgGroupProdLinkId ?? ''),
-          customerCode: String(item.customerCode ?? ''),
-          carModel: String(item.vehicleTypeCode ?? ''),
-          roadId: String(item.roadId ?? ''),
-          sopPlanMonth: String(item.sopPlanMonth ?? ''),
-          updateDate: String(item.updateDate ?? ''),
-          roadmapType: this.roadmapType,
-          validityStatusNm: String(item.itemStatusCode ?? ''),
-          validityStatus: String(item.itemStatusCode ?? ''),
-          trmCount: Number(item.trmCount ?? 0),
-          hasTrm: Number(item.trmCount ?? 0) > 0,
-          ptrmType: 'PRM',
-          priority: Number(item.seqIndex ?? 0),
-          writingStatusNm: '작성완료',
-          writingStatus: 'code002',
-          projectPlanningStatusNm: '과제계획 미수립',
-          projectExecutionStatusNm: '실행 미연계',
-          projectExecutionStatus: 'code011',
-        }))
+        if (this.roadmapType === 'PRM') {
+          // ── PRM: 제품 로드맵 아이템 조회 ──────────────────────────────────
+          const apiPayload = {
+            roadmapType: this.roadmapType,
+            includeInactive: payload.includeInactive ?? false,
+            page: 0,
+            size: 10000,
+          }
+          const mapped = await getProductItems(
+            this.api,
+            this.groups,
+            apiPayload,
+            (masterCode: string, code: string) => this.getDdName(masterCode, code),
+          )
 
-        const derivedGroups: Array<Record<string, unknown>> = Array.from(
-          new Map(
-            mapped.map((item: Record<string, unknown>) => [
-              String(item.group),
-              {
-                id: String(item.group),
-                content: String(item.organizationNm || item.group),
-                order: Number(item.order ?? 0),
-                visible: true,
-                nestedGroups: [],
-                isOrganization: false,
-                isSubGroup: false,
-              },
-            ]),
-          ).values(),
-        )
+          // 임시 평탄 그룹 (loadGroups 전 fallback)
+          const derivedGroups = Array.from(
+            new Map(
+              mapped.map((item) => [
+                String(item.group),
+                {
+                  id: String(item.group),
+                  content: String(item.organizationNm ?? item.group),
+                  order: Number(item.order ?? 0),
+                  visible: true,
+                  nestedGroups: [],
+                  isOrganization: false,
+                  isSubGroup: false,
+                },
+              ]),
+            ).values(),
+          )
 
-        this.items = mapped
-        this.itemsDS.clear()
-        this.itemsDS.add(mapped as never[])
-        this.setGroups(derivedGroups)
+          this.items = mapped
+          this.itemsDS.clear()
+          this.itemsDS.add(mapped as never[])
+          this.setGroups(derivedGroups)
+        } else {
+          // ── TRM / CMM / COM: 기술분류 아이템 조회 ──────────────────────
+          const items = await getRequireTechnologyItems(this.api, {
+            ...payload,
+            roadmapType: this.roadmapType,
+          })
+          this.items = items
+          this.itemsDS.clear()
+          this.itemsDS.add(items as never[])
+        }
       } catch (error) {
         this.error = error instanceof Error ? error.message : '로드맵 데이터를 불러오지 못했습니다.'
       } finally {
@@ -584,6 +730,23 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
      * @param payload.includeInactive - 비활성 포함 여부
      * @returns TRM 아이템 배열 (vis-timeline 호환 형식으로 매핑됨)
      */
+    /**
+     * 스토어 상태를 초기화합니다.
+     * 화면 전환 또는 조건 변경 시 이전 데이터를 완전히 제거합니다.
+     */
+    reset() {
+      this.groups = []
+      this.items = []
+      this.groupsDS.clear()
+      this.itemsDS.clear()
+      this.roadmapType = 'PRM'
+      this.orgGroups = []
+      this.selectedRoadId = null
+      this.subTechCacheByParentId = {}
+      this.groupItemCacheByGroupId = {}
+      this.error = ''
+    },
+
     async getTrms(payload: { roadmapType?: RoadmapType; productItemIds?: string[]; includeInactive?: boolean }) {
       const roadmapType = payload.roadmapType ?? 'TRM'
       const ids = payload.productItemIds ?? []
@@ -624,9 +787,9 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
         organizationNm: String(item.orgGroupNameKo ?? item.orgGroupNameEn ?? ''),
         roadId: String(item.roadId ?? ''),
         updateDate: String(item.updateDate ?? ''),
-        roadmapType,
+        roadmapType: roadmapType as 'PRM' | 'TRM' | 'COM',
         validityStatus: String(item.techStatusCode ?? ''),
-        ptrmType: roadmapType,
+        ptrmType: roadmapType as 'PRM' | 'TRM' | 'COM',
         hasTrm: false,
         writingStatus: 'code002',
         writingStatusNm: '작성완료',

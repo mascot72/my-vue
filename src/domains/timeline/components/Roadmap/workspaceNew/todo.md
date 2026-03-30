@@ -39,18 +39,21 @@ legacy workspace 관련 내용은 ../workspace/todo.md 에서 관리합니다.
 
 ## 4) 다음 작업 후보
 ### 4-1) 우선 작업 후보
-- [ ] A. /origin 폴더내에 구성 컴포넌트들의 종속성 구조 활용 디자인 가져오고 + /workspaceNew에서 정리된 기능을 개선된 기능으로 조합하기 (origin이 lagacy이기 때문에 모든 기능을 옮겨서 refactory 하려는 목적이다)
-  - [ ] 1. TimelineGroup.vue => template.ts에 groupTemplate에 적용
-  - [ ] 2. TimelineItem.vue => template.ts에 itemTemplate에 적용
-  - [ ] 3. ItemInfoPopup.vue => ItemHoverLayerPopup.vue에 적용
-  - [ ] 4. ItemDetailSlide.vue => RoadmapDetailsPanel.vue에 적용
-  - [ ] 5. 처리한 내용을 API_INTEGRATION.md에 적용해서 갱신
-  - [ ] 6. 처리한 내용으로 각 내용을 git commit
-- [ ] B. timeline.store.ts 개선
-  - [ ] 1. loadGroups 기능은 별도의 api가 존재하므로 연결한다: 위치 = /Roadmap에 존재하는 timeline.store.ts > loadGroups 항목과 똑같은 동작
-  - [ ] 2. origin 의 디자인 기능 + workspaceNew의 개선된 기능으로 조합하여 완성
-  - [ ] 3. 처리한 내용을 API_INTEGRATION.md에 적용해서 갱신
-  - [ ] 4. 처리한 내용으로 각 내용을 git commit
+- [ ] A. /workspaceNew/timeline.store.ts 개선
+  - [x] 1. /Roadmap에 존재하는 timeline.store.ts 기능들 모두 우선으로 해서 > loadGroups 항목과 똑같은 동작 추가등 모두 /workspaceNew/timeline.store.ts에 적용한다!
+- [ ] B. /origin 폴더내에 구성 컴포넌트들의 종속성 구조 활용 디자인 가져오고 + /workspaceNew에서 정리된 기능을 개선된 기능으로 조합하기 (origin이 lagacy이기 때문에 모든 기능을 옮겨서 refactory 하려는 목적이다)
+  - [x] 1. 결과를 담을 폴더 /target 이라고 생성하고 이후 작업물을 이 폴더에 모두 넣는다
+  - [ ] 2. latestRmView.vue => entry page로 만들어서 router를 연결한다
+    - /origin의 종속성과 동일한 기준 유지하라
+      - latestRmView.vue -> TimelineRoadmap.vue -> VisTimeline.vue(Timeline.vue)
+  - [ ] 3. TimelineGroup.vue => template.ts에 groupTemplate에 적용
+  - [x] 4. TimelineItem.vue => template.ts에 itemTemplate에 적용
+  - [x] 5. ItemInfoPopup.vue => ItemHoverLayerPopup.vue에 적용
+  - [x] 6. ItemDetailSlide.vue => RoadmapDetailsPanel.vue에 적용
+  - [x] 7. VisContextMenu.vue => 마우스 컨텍스트 메뉴 적용
+  - [x] 8. VisTimeline.vue => Timeline.vue에 적용
+  - [x] 9. 처리한 내용을 API_INTEGRATION.md에 적용해서 갱신
+  - [x] 10. 처리한 내용으로 각 내용을 git commit
 
 ### 4-2) 추후 작업 후보
 - [ ] 그룹 체크 상태 영속화(새로고침 후 유지) 필요 여부 검토

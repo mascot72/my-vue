@@ -19,6 +19,7 @@ import { RouterLink, RouterView } from 'vue-router'
           <RouterLink to="/timeline-enhanced">Enhanced</RouterLink>
           <RouterLink to="/roadmap">Roadmap</RouterLink>
           <RouterLink to="/roadmap-workspace-new">Work Roadmap New</RouterLink>
+          <RouterLink to="/roadmap-target">Roadmap Target</RouterLink>
         </nav>
       </div>
     </header>
