@@ -39,14 +39,17 @@ legacy workspace 관련 내용은 ../workspace/todo.md 에서 관리합니다.
 
 ## 4) 다음 작업 후보
 ### 4-1) 우선 작업 후보
-- [ ] A. /workspaceNew/timeline.store.ts 개선
+- [x] A. /workspaceNew/timeline.store.ts 개선
   - [x] 1. /Roadmap에 존재하는 timeline.store.ts 기능들 모두 우선으로 해서 > loadGroups 항목과 똑같은 동작 추가등 모두 /workspaceNew/timeline.store.ts에 적용한다!
-- [ ] B. /origin 폴더내에 구성 컴포넌트들의 종속성 구조 활용 디자인 가져오고 + /workspaceNew에서 정리된 기능을 개선된 기능으로 조합하기 (origin이 lagacy이기 때문에 모든 기능을 옮겨서 refactory 하려는 목적이다)
+- [x] B. /origin 폴더내에 구성 컴포넌트들의 종속성 구조 활용 디자인 가져오고 + /workspaceNew에서 정리된 기능을 개선된 기능으로 조합하기 (origin이 lagacy이기 때문에 모든 기능을 옮겨서 refactory 하려는 목적이다)
   - [x] 1. 결과를 담을 폴더 /target 이라고 생성하고 이후 작업물을 이 폴더에 모두 넣는다
-  - [ ] 2. latestRmView.vue => entry page로 만들어서 router를 연결한다
+  - [x] 2. entry page를 RoadmapView.vue로 만들되 latestRmView.vue의 디자인과 기능들 연결 => router를 연결한다
     - /origin의 종속성과 동일한 기준 유지하라
       - latestRmView.vue -> TimelineRoadmap.vue -> VisTimeline.vue(Timeline.vue)
-  - [ ] 3. TimelineGroup.vue => template.ts에 groupTemplate에 적용
+  - [x] 3. TimelineGroup.vue => template.ts에 groupTemplate에 적용 디자인 맞추기
+    - Group의 접기, checkbox 동작이 달라야 한다
+    - Group tree 펼치기/접기 기능 수행은 해당 라인 접기/펼치기 toggle 동작
+    - 옆에 checkbox는 선택하면 tree는 계속 유지하되 + items가 보이고 안보이고 toggle 동작
   - [x] 4. TimelineItem.vue => template.ts에 itemTemplate에 적용
   - [x] 5. ItemInfoPopup.vue => ItemHoverLayerPopup.vue에 적용
   - [x] 6. ItemDetailSlide.vue => RoadmapDetailsPanel.vue에 적용
