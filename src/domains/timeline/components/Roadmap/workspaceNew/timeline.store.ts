@@ -305,9 +305,9 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
     selectedRoadId: null as string | null,
     /** 기술분류 명칭 조회 함수. 외부(마스터데이터 스토어)에서 주입합니다. */
     getTechNameFn: null as ((code: string) => string) | null,
-    useSubTechCache: true,
-    subTechCacheByParentId: {} as Record<string, Array<Record<string, unknown>>>,
-    groupItemCacheByGroupId: {} as Record<string, Array<Record<string, unknown>>>,
+    useSubTechCache: true,  // 하위기술(TRM/CMM) 캐시 사용 여부. true면 같은 parentId의 TRM 데이터를 재요청하지 않음.
+    subTechCacheByParentId: {} as Record<string, Array<Record<string, unknown>>>, // parentId → TRM 아이템 배열 캐시
+    groupItemCacheByGroupId: {} as Record<string, Array<Record<string, unknown>>>, // groupId → 아이템 배열 캐시 (특정 그룹의 아이템을 통째로 캐싱)
     loading: false,
     error: '' as string,
     roadmapType: 'PRM' as RoadmapType,

@@ -79,3 +79,25 @@ legacy workspace 관련 내용은 ../workspace/todo.md 에서 관리합니다.
 - src/domains/timeline/components/Roadmap/workspaceNew/templates.ts
 - src/domains/timeline/components/Roadmap/workspaceNew/useTimelineHoverPopup.ts
 - src/domains/timeline/components/Roadmap/workspaceNew/ItemHoverLayerPopup.vue
+
+## 6) 나머지 Todo (4/1)
+ 
+- [ ] 변경 정보 <next-ui?> design 연결
+  - groupTemplate에 전달하기 위해 Timeline.vue에 다국어 연결하기
+- [ ] Arrow 동작방식 확인하여 높이 늘리는 방법 찾기
+  - itemsDS에 add하는 방식
+  - 미리 넣어서 높이를 늘리는가?
+  + 원하는 결과
+    - 부모 item의 바로 아래 순서에 들어간다
+    - group: 부모 item과 동일한 group에 속한다
+    - itemLink: 부모 id를 itemLink 값에 치환 한다
+    - subgroup: 고유한 id
+    - subgroupOrder: 같은 부모 내에서의 순서
+  + 확인한 결과
+    - timelineState.activeArrowItemIds[]에 존재하면 '-' 버튼으로 보인다
+- [ ] 필요기술, 공통기술 Items DB 내제화  
+  - [ ] 기술분류3단계일때 name이 안보임
+    - db query가 변경된 원인
+    - ...techClassNameKo|En|Zh 형식으로 ' > ' 구분자로 나뉘어져 있다
+    - 분리해서 맨 마지막 데이타를 사용한다
+- [ ] 신규 제품/필요기술/공통기술 등록 연결

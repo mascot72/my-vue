@@ -55,7 +55,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
 
   /**
    * VisTimelineArrows 인스턴스를 요청시 생성합니다 (lazy init).
-   * 화살표가 필요할 때귀지 생성하여 초기 렌더링 성능을 욈니다.
+   * 화살표가 필요할 때만 생성하여 초기 렌더링 성능을 향상시킵니다.
    */
   const ensureArrows = () => {
     if (!timelineInstance || timelineArrows) return
@@ -67,7 +67,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
   }
 
   /**
-   * 특정 부모 아이템의 화살표를 DataSet에서 화살표 라이뉰리 연결선으로 마운합니다.
+   * 특정 부모 아이템의 화살표를 DataSet에서 화살표 라이브러리 연결선으로 마운트합니다.
    * 1. 기존 화살표 제거
    * 2. itemsDS에서 parentId를 itemLink로 가지는 자식 아이템 조회
    * 3. 각 자식마다 addArrow()
@@ -272,7 +272,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
 
   /**
    * 캐시된 하위기술 아이템을 DataSet에 복원합니다 (API 호출 없이).
-   * 이미 DataSet에 존재하는 을는 중복 주입하지 않는다.
+   * 이미 DataSet에 존재하는 아이템은 중복 주입하지 않는다.
    *
    * @param parentId - 부모 PRM 아이템의 ID
    * @returns true: 캐시에서 복원됨, false: 캐시 없음
@@ -296,9 +296,9 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
   }
 
   /**
-   * 특정 PRM 아이템에 연결된 TRM/COM 하위기술을 지연로드(lazy load)합니다.
+   * 특정 PRM 아이템에 연결된 TRM/CMM 하위기술을 지연로드(lazy load)합니다.
    *
-   * 로드 문바 무효화 로직:
+   * 로딩시 무한로드 무효화 로직:
    * 1. pendingRequests에 등록된 경우 → 이미 요청 중. skip
    * 2. loadedItems에 등록된 경우 → 캐시 복원 시도. 성공하면 skip
    * 3. 구성요소에 이미 자식이 치루 별수를 조회한 수 있는 경우도 skip
@@ -334,7 +334,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     pendingRequests.add(itemId)
     try {
       const trms = await store.getTrms({
-        roadmapType: store.roadmapType === 'PRM' ? 'TRM' : 'COM',
+        roadmapType: store.roadmapType === 'PRM' ? 'TRM' : 'CMM',
         productItemIds: [itemId],
       })
 
@@ -353,19 +353,21 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
             className: 'child-trm-card',
             start,
             end,
-            subgroup: `child-${itemId}-${index + 1}`,
-            subgroupOrder: index + 1,
+            subgroup: `child-${itemId}-${index + 1}`, // subgroup은 고유해야 하므로 parentId + index 조합으로 생성
+            subgroupOrder: index + 1, // 같은 부모 내에서 순서 보장
             itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
           }
         })
 
-        itemsDS.add(mappedItems)
+        itemsDS.add(mappedItems) // DataSet에 추가 (Vue Proxy 아님)
+        console.log(`Loaded ${mappedItems.length} sub-tech items for parentId ${itemId}`)
+        console.log('Mapped Items:', mappedItems)
 
-        if (store.useSubTechCache) {
-          store.cacheSubTechItems(itemId, mappedItems)
+        if (store.useSubTechCache) {  // 캐시 사용 시, 새로 로드한 아이템을 캐시에 저장
+          store.cacheSubTechItems(itemId, mappedItems) // 캐시에 저장 (shallow copy로 Proxy 방지)
         }
 
-        await syncArrowForParent(itemId)
+        await syncArrowForParent(itemId) // 화살표 연결선 동기화 (새 아이템이 추가되었으므로)
       }
 
       loadedItems.add(itemId)
@@ -390,7 +392,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
       if (!timelineState.activeArrowItemIds.includes(id)) {
         timelineState.activeArrowItemIds.push(id)
       }
-      await loadSubTechItems(id)
+      await loadSubTechItems(id)  // 하위기술 트리 로드 및 화살표 동기화
       return
     }
 
