@@ -10,6 +10,7 @@
  *   vis-data는 내부적으로 id 문자열 타입 검사, instanceof 검사 등을 수행하는데
  *   Proxy을 전달하면 예상치 못한 실패가 발생합니다.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { nextTick, reactive, toRaw } from 'vue'
 // @ts-expect-error legacy JS module without type declarations
 import VisTimelineArrows from '../visTimelineArrow.js'
@@ -87,6 +88,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
         id_item_1: parentId,
         id_item_2: String(child.id),
         type: 2,
+        align: 'left',
         color: '#16a34a',
       })
     })
@@ -227,9 +229,11 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
    */
   const reloadData = (items: any[]) => {
     if (!items) return
-    const processed = items.map((item) => {
+    const processed = items.map((item, index) => {
       // ⚠️ toRaw(): Vue Proxy 래퍼에서 순수 객체 추출
       const raw = toRaw(item)
+      const baseOrder = Number(raw.subgroupOrder ?? raw.order ?? index + 1)
+      const normalizedOrder = Number.isFinite(baseOrder) ? baseOrder * 1000 : (index + 1) * 1000
       return {
         ...raw,
         id: String(raw.id),
@@ -238,8 +242,8 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
         // 관리하면 내부에서 valueOf() 호출 비교가 더 빠릅니다.
         start: raw.start ? new Date(raw.start as string) : null,
         end: raw.end ? new Date(raw.end as string) : null,
-        subgroup: raw.subgroup,
-        subgroupOrder: raw.subgroupOrder,
+        subgroup: raw.subgroup ?? `row-${String(raw.id)}`,
+        subgroupOrder: normalizedOrder,
         content: '', // 실제 콘텐츠는 template 함수가 렌더링함
       }
     })
@@ -340,11 +344,33 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
 
       const newItems = (trms || []).filter((item: any) => itemsDS.get(item.id) === null)
       if (newItems.length) {
+        const parentOrder = Number(parentItem.subgroupOrder ?? parentItem.order ?? 0)
+        const sameGroupParentRows = itemsDS
+          .get({
+            filter: (item: any) =>
+              item.ptrmType === 'PRM' &&
+              String(item.group) === String(parentItem.group) &&
+              Number(item.subgroupOrder ?? item.order ?? 0) > parentOrder,
+          })
+          .sort(
+            (a: any, b: any) =>
+              Number(a.subgroupOrder ?? a.order ?? 0) - Number(b.subgroupOrder ?? b.order ?? 0),
+          )
+
+        const nextParentOrder = sameGroupParentRows.length
+          ? Number(sameGroupParentRows[0].subgroupOrder ?? sameGroupParentRows[0].order ?? parentOrder + 1000)
+          : parentOrder + 1000
+
+        const availableRange = Math.max(nextParentOrder - parentOrder, newItems.length + 1)
+        const step = Math.max(1, Math.floor(availableRange / (newItems.length + 1)))
+
         const mappedItems = newItems.map((item: any, index: number) => {
-          const start = new Date(parentItem.start)
-          start.setDate(start.getDate() + index * 10)
-          const end = new Date(start)
-          end.setDate(end.getDate() + 45)
+          const insertionOrder = parentOrder + step * (index + 1)
+          const start = parentItem.start ? new Date(parentItem.start) : convertFallbackDate()
+          const end = parentItem.end ? new Date(parentItem.end) : new Date(start)
+          if (!parentItem.end) {
+            end.setDate(end.getDate() + 45)
+          }
 
           return {
             ...item,
@@ -353,8 +379,8 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
             className: 'child-trm-card',
             start,
             end,
-            subgroup: `child-${itemId}-${index + 1}`, // subgroup은 고유해야 하므로 parentId + index 조합으로 생성
-            subgroupOrder: index + 1, // 같은 부모 내에서 순서 보장
+            subgroup: `row-${itemId}-child-${index + 1}`,
+            subgroupOrder: insertionOrder,
             itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
           }
         })
@@ -544,4 +570,8 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     focusItemById,
     destroyTimelineArrows,
   }
+}
+
+function convertFallbackDate() {
+  return new Date()
 }

@@ -108,3 +108,9 @@ legacy workspace 관련 내용은 ../workspace/todo.md 에서 관리합니다.
     - componsable
     - api
     
+
++ item 하단 +/- 버튼 클릭으로 자식 items 연결시 처리 개선 요청
+    + [ ] 라아트 '/roadmap-target'에 접속시 보여지는 timeline의 items영역에서 arrow line 랜더링 결과 이슈가 있는데, 다음과 같이 처리 되어야 한다
+      - sub items가 보이고 화살표 연결선이 부모 - 자식간 그려질때 뒤에서 선이 나오지 않아야 한다
+      - sub items가 생성될때 부모 item의 바로 밑으로 붙게 되어야 한다
+      - 만약 부모 item의 바로 아래에 다른 item이 있다면 , 그 사이에 공간이 늘어나면서 sub items가 삽입되어 보여야 한다
