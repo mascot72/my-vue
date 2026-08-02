@@ -8,6 +8,7 @@ interface PopupItem {
   itemStatusCode?: string
   technologyClassLv3Name?: string
   ptrmType?: string
+  [key: string]: unknown
 }
 
 const props = defineProps<{
@@ -53,7 +54,7 @@ const onOpenDetail = () => {
         <div class="row"><span class="label">조직</span><span class="value">{{ itemData.organizationNm || '-' }}</span></div>
         <div class="row"><span class="label">유형</span><span class="value">{{ itemData.ptrmType || '-' }}</span></div>
         <div class="row"><span class="label">기술분류</span><span class="value">{{ itemData.technologyClassLv3Name || '-' }}</span></div>
-        <div class="row desc"><span class="label">설명</span><span class="value">{{ itemData.titleEn || '-' }}</span></div>
+        <div class="row desc"><span class="label">설명</span><span class="value">{{ `${itemData.order}, ${itemData.subgroup}, ${itemData.subgroupOrder}` }}</span></div>
       </div>
 
       <button type="button" class="detail-button" @click="onOpenDetail">상세 보기</button>
