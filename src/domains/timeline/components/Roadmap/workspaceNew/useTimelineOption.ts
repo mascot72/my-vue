@@ -17,7 +17,7 @@ interface TimelineOptions {
   stackSubgroups: boolean
   zoomKey: string
   margin: { item: number }
-  locale: string
+  locale?: string
   order: (a: Record<string, unknown>, b: Record<string, unknown>) => number
   groupOrder: string
   format: {
@@ -54,8 +54,8 @@ export default function useTimelineOption({ itemMargin, options, viewMode }: Tim
     stackSubgroups: true,
     zoomKey: 'ctrlKey',
     margin: { item: itemMargin },
-    locale: 'ko',
-    order: (a, b) => (a.priority as number) - (b.priority as number),
+    // locale: 'ko',
+    order: (a, b) => (a.order as number) - (b.order as number),
     groupOrder: 'order',
     format: {
       minorLabels: (date, scale, step) => {
@@ -66,6 +66,13 @@ export default function useTimelineOption({ itemMargin, options, viewMode }: Tim
       majorLabels: (date) => moment(date).format('YYYY년'),
     },
     showTooltips: false,
+    onInitialDrawComplete: () => {
+      console.log('Timeline initial draw complete')
+    },
+    onUpdate: (item: Record<string, unknown>, callback: (item: Record<string, unknown>) => void) => {
+      item.content = prompt('Edit items text:', item.content as string) || item.content
+      callback(item)
+    },
   }
 
   const makeTimelineOptions = (viewType: 'MONTH' | 'QUARTER') => {
