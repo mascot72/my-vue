@@ -68,7 +68,8 @@ type GroupNode = {
   isSubGroup: boolean
   hasChildren: boolean
   treeLevel: number
-  order: number
+  order: number,
+  subgroupStack?: boolean
 }
 
 /**
@@ -127,6 +128,7 @@ const buildGroupsFromItems = (items: Array<Record<string, unknown>>) => {
         hasChildren: false,
         treeLevel: orgId ? 1 : 0,
         order: Number(item.order ?? 0),
+        subgroupStack: true,
       })
     }
   })
@@ -482,6 +484,7 @@ export const useWorkspaceNewTimelineStore = defineStore('roadmap:workspace-new:t
               order: Number(g.seq ?? g.seqIndex ?? 0),
               isRoadmapProduct: false,
               isSubGroup: !!parentId,
+              subgroupStack: true
             }
           })
 
