@@ -196,6 +196,9 @@ onMounted(async () => {
       div.innerHTML = groupTemplate(group, group.checked !== false, props.msg)
       return div
     },
+    stack: true,
+    // stackSubgroups: true,
+    editable: true,
   }
 
   // 2. vis-timeline 인스턴스 생성 (markRaw된 DataSet 직접 사용)

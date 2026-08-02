@@ -187,6 +187,8 @@ async function getProductItems(
         end: convertDate(String(item.devEndPlanMonth ?? ''), true),
         group: String(item.roadOrgGroupProdLinkId ?? ''),
         order: Number(item.seqIndex ?? 0),
+        subgroup: `sg-${String(item.id)}`,
+        subgroupOrder: Number(item.seqIndex ?? 0),
         className: 'timeline-item-active priority-high',
         itemStatusCode: String(item.itemStatusCode ?? ''),
         itemStatusName: getDdNameFn('TES.ROAD_STATUS', String(item.itemStatusCode ?? '')),

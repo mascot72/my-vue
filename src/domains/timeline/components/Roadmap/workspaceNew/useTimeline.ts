@@ -14,6 +14,7 @@
 import { nextTick, reactive, toRaw } from 'vue'
 // @ts-expect-error legacy JS module without type declarations
 import VisTimelineArrows from '../visTimelineArrow.js'
+import moment from 'moment'
 
 /**
  * workspaceNew Timeline Composable.
@@ -229,11 +230,12 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
    */
   const reloadData = (items: any[]) => {
     if (!items) return
+
     const processed = items.map((item, index) => {
       // ⚠️ toRaw(): Vue Proxy 래퍼에서 순수 객체 추출
       const raw = toRaw(item)
       const baseOrder = Number(raw.subgroupOrder ?? raw.order ?? index + 1)
-      const normalizedOrder = Number.isFinite(baseOrder) ? baseOrder * 1000 : (index + 1) * 1000
+      const normalizedOrder = Number.isFinite(baseOrder) ? baseOrder : (index + 1)
       return {
         ...raw,
         id: String(raw.id),
@@ -242,7 +244,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
         // 관리하면 내부에서 valueOf() 호출 비교가 더 빠릅니다.
         start: raw.start ? new Date(raw.start as string) : null,
         end: raw.end ? new Date(raw.end as string) : null,
-        subgroup: raw.subgroup ?? `row-${String(raw.id)}`,
+        subgroup: raw.subgroup ?? `sg-${String(raw.id)}`,
         subgroupOrder: normalizedOrder,
         content: '', // 실제 콘텐츠는 template 함수가 렌더링함
       }
@@ -365,12 +367,10 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
         const step = Math.max(1, Math.floor(availableRange / (newItems.length + 1)))
 
         const mappedItems = newItems.map((item: any, index: number) => {
+          console.log(`Mapping sub-tech item ${item.id} for parentId ${itemId}`, item)
           const insertionOrder = parentOrder + step * (index + 1)
-          const start = parentItem.start ? new Date(parentItem.start) : convertFallbackDate()
-          const end = parentItem.end ? new Date(parentItem.end) : new Date(start)
-          if (!parentItem.end) {
-            end.setDate(end.getDate() + 45)
-          }
+          const start = item.start
+          const end = item.end ?? start
 
           return {
             ...item,
@@ -379,7 +379,9 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
             className: 'child-trm-card',
             start,
             end,
-            subgroup: `row-${itemId}-child-${index + 1}`,
+            order: parentOrder + index + 1,
+            priority: parentOrder + index + 1,
+            subgroup: `sg-${itemId}`,
             subgroupOrder: insertionOrder,
             itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
           }
@@ -415,15 +417,40 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
   const visibleSubTechTree = async (visible: boolean, itemId: string) => {
     const id = String(itemId)
     if (visible) {
+      timelineInstance?.setOptions({
+        stack: true,
+        // stackSubgroups: true,
+        margin: {
+          item: 16, // 인접 카드 및 화살표 간섭 방지 여유 공간
+          axis: 20,
+        },
+      })
+
       if (!timelineState.activeArrowItemIds.includes(id)) {
         timelineState.activeArrowItemIds.push(id)
       }
       await loadSubTechItems(id)  // 하위기술 트리 로드 및 화살표 동기화
+      await nextTick()
+      timelineInstance?.redraw()
+
+      console.log(`Sub-tech tree for parentId ${id} is now visible.`, timelineInstance?.options)
       return
     }
 
     timelineState.activeArrowItemIds = timelineState.activeArrowItemIds.filter((value) => value !== id)
     removeSubItems(id)
+    timelineInstance?.setOptions({
+      stack: true,
+      stackSubgroups: false,
+      margin: {
+        item: 0,
+        axis: 0,
+      },
+    })
+
+    await nextTick()
+    timelineInstance?.redraw()
+    console.log(`Sub-tech tree for parentId ${id} is now hidden.`, timelineInstance?.options)
   }
 
   /**
