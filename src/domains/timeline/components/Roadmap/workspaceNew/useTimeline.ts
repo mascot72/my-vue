@@ -234,8 +234,8 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     const processed = items.map((item, index) => {
       // ⚠️ toRaw(): Vue Proxy 래퍼에서 순수 객체 추출
       const raw = toRaw(item)
-      const baseOrder = Number(raw.subgroupOrder ?? raw.order ?? index + 1)
-      const normalizedOrder = Number.isFinite(baseOrder) ? baseOrder : (index + 1)
+      const baseOrder = Number(raw.subgroupOrder ?? raw.order ?? index)
+      const normalizedOrder = Number.isFinite(baseOrder) ? baseOrder : (index)
       return {
         ...raw,
         id: String(raw.id),
@@ -252,8 +252,12 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
 
     itemsDS.clear()
     itemsDS.add(processed)
+
   }
 
+  itemsDS.on("*", function (event: any, properties: unknown) {
+    console.log("DataSet Event:", event, properties)
+  })
   /**
    * 특정 부모 아이템의 하위기술 아이템들을 DataSet에서 제거합니다.
    * 화살표 연결선도 함께 제거합니다.
@@ -367,10 +371,10 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
         const step = Math.max(1, Math.floor(availableRange / (newItems.length + 1)))
 
         const mappedItems = newItems.map((item: any, index: number) => {
-          console.log(`Mapping sub-tech item ${item.id} for parentId ${itemId}`, item)
           const insertionOrder = parentOrder + step * (index + 1)
           const start = item.start
           const end = item.end ?? start
+          const nextOrder = parentOrder + index + 1
 
           return {
             ...item,
@@ -379,10 +383,10 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
             className: 'child-trm-card',
             start,
             end,
-            order: parentOrder + index + 1,
-            priority: parentOrder + index + 1,
+            order: nextOrder,
+            priority: nextOrder,
             subgroup: `sg-${itemId}`,
-            subgroupOrder: insertionOrder,
+            subgroupOrder: nextOrder,
             itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
           }
         })
@@ -433,7 +437,6 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
       await nextTick()
       timelineInstance?.redraw()
 
-      console.log(`Sub-tech tree for parentId ${id} is now visible.`, timelineInstance?.options)
       return
     }
 
