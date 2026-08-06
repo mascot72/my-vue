@@ -1,6 +1,9 @@
-import { reactive, ref } from 'vue'
+import { reactive, ref, nextTick } from 'vue'
 
 type TimelineRecord = Record<string, unknown>
+type TimelinePositionAnchor = { top: number; bottom: number; left: number }
+type TimelineVisualItem = { dom?: { content?: HTMLElement } }
+type TimelineLike = { itemSet?: { items?: Record<string, TimelineVisualItem> } }
 type PopupItem = {
   id?: string | number
   title?: string
@@ -19,6 +22,9 @@ interface UseTimelineHoverPopupParams {
   itemsDS: { get: (id: string) => PopupItem | null }
   getAllItems: () => TimelineRecord[]
   useItemTooltip: () => boolean
+  getTimeline: () => unknown
+  getTimelineContainer: () => HTMLElement | null
+  itemMargin?: number
   onOpenDetail: (item: PopupItem) => void
 }
 
@@ -26,6 +32,9 @@ export const useTimelineHoverPopup = ({
   itemsDS,
   getAllItems,
   useItemTooltip,
+  getTimeline,
+  getTimelineContainer,
+  itemMargin = 3,
   onOpenDetail,
 }: UseTimelineHoverPopupParams) => {
   const popupState = reactive({
@@ -63,14 +72,67 @@ export const useTimelineHoverPopup = ({
     popupPosition.top = Math.max(8, Math.min(y + gap, maxTop))
   }
 
-  const showPopupFromEvent = (itemId: string | number, event: MouseEvent, pinned = false) => {
+  const moveObjectPosition = (
+    basePoint: TimelinePositionAnchor,
+    objectRect: Pick<DOMRect, 'height' | 'width'>,
+    verticalGapSize = 0,
+  ) => {
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+
+    let top = basePoint.bottom + window.scrollY + verticalGapSize
+    let left = basePoint.left + window.scrollX
+
+    if (top + objectRect.height > window.scrollY + windowHeight) {
+      top = basePoint.top + window.scrollY - objectRect.height - verticalGapSize
+    }
+
+    if (left + objectRect.width > window.scrollX + windowWidth) {
+      left -= left + objectRect.width - (window.scrollX + windowWidth)
+      if (left < 1) left = 1
+    }
+
+    return { top, left }
+  }
+
+  const getPopupElement = () => document.querySelector('.item-hover-popup') as HTMLElement | null
+
+  const showPopupFromEvent = async (itemId: string | number, event: MouseEvent, pinned = false) => {
     const targetItem = getPopupItemById(itemId)
     if (!targetItem) return
 
     popupItem.value = targetItem
     popupState.show = true
     popupState.pinned = pinned
-    movePopupPosition(event.pageX, event.pageY)
+    await nextTick()
+
+    const timeline = getTimeline() as TimelineLike | null
+    const timelineItem = timeline?.itemSet?.items?.[String(itemId)]
+    const popupEl = getPopupElement()
+
+    if (timelineItem?.dom?.content && popupEl) {
+      const itemRect = timelineItem.dom.content.getBoundingClientRect()
+      const anchor: TimelinePositionAnchor = {
+        top: itemRect.top,
+        bottom: itemRect.bottom,
+        left: itemRect.left,
+      }
+
+      const centerPanel = getTimelineContainer()?.querySelector('.vis-panel.vis-center')
+      if (centerPanel) {
+        const centerRect = centerPanel.getBoundingClientRect()
+        if (anchor.left < centerRect.left) {
+          anchor.left = centerRect.left
+        }
+      }
+
+      const popupRect = popupEl.getBoundingClientRect()
+      const position = moveObjectPosition(anchor, popupRect, itemMargin)
+      popupPosition.top = position.top
+      popupPosition.left = position.left
+    } else {
+      movePopupPosition(event.pageX, event.pageY)
+    }
   }
 
   const closePopup = (force = false) => {

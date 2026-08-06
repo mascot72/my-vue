@@ -117,6 +117,9 @@ const {
   itemsDS,
   getAllItems: () => props.allItems as TimelineRecord[],
   useItemTooltip: () => props.useItemTooltip,
+  getTimeline: () => timelineInstance,
+  getTimelineContainer: () => timelineRef.value,
+  itemMargin,
   onOpenDetail: (item) => emit('open-detail-slide', item),
 })
 

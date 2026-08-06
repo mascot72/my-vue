@@ -385,7 +385,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
             end,
             order: nextOrder,
             priority: nextOrder,
-            subgroup: `sg-${itemId}`,
+            subgroup: `sg-${itemId}-child`,
             subgroupOrder: nextOrder,
             itemStatusName: getDdName('TES.ROAD_STATUS', item.itemStatusCode),
           }

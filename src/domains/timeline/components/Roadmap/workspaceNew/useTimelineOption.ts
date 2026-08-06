@@ -73,6 +73,7 @@ export default function useTimelineOption({ itemMargin, options, viewMode }: Tim
       item.content = prompt('Edit items text:', item.content as string) || item.content
       callback(item)
     },
+    editable: true,
   }
 
   const makeTimelineOptions = (viewType: 'MONTH' | 'QUARTER') => {
