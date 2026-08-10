@@ -144,12 +144,16 @@ const {
   handleTimelineItemOver,
   handleTimelineItemOut,
   handleTimelineClick,
+  handleTimelineViewportChange,
   attachGlobalListeners,
   detachGlobalListeners,
 } = useTimelineHoverPopup({
   itemsDS,
   getAllItems: () => props.allItems as RecordAny[],
   useItemTooltip: () => props.useItemTooltip,
+  getTimeline: () => timelineInstance,
+  getTimelineContainer: () => timelineRef.value,
+  itemMargin,
   onOpenDetail: (item) => emit('open-detail-slide', item),
 })
 
@@ -348,6 +352,9 @@ onMounted(async () => {
   timelineInstance.on('itemover', handleTimelineItemOver)
   timelineInstance.on('itemout',  handleTimelineItemOut)
   timelineInstance.on('click',    handleTimelineClick)
+  timelineInstance.on('rangechange', handleTimelineViewportChange)
+  timelineInstance.on('rangechanged', handleTimelineViewportChange)
+  timelineInstance.on('changed', handleTimelineViewportChange)
 
   // 우클릭 컨텍스트 메뉴
   timelineInstance.on('contextmenu', handleVisContextMenu as never)

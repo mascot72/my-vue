@@ -44,6 +44,8 @@ export const useTimelineHoverPopup = ({
   })
   const popupItem = ref<PopupItem | null>(null)
   const popupPosition = reactive({ top: 0, left: 0 })
+  const activeItemId = ref<string | number | null>(null)
+  const lastPointer = reactive({ x: 0, y: 0 })
 
   let hidePopupTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -61,15 +63,49 @@ export const useTimelineHoverPopup = ({
     return allItems.find((item) => String(item.id) === String(itemId)) as PopupItem | undefined
   }
 
-  const movePopupPosition = (x: number, y: number) => {
-    const width = 320
-    const height = 220
-    const gap = 12
-    const maxLeft = window.innerWidth - width - 8
-    const maxTop = window.innerHeight - height - 8
+  const getContainerBounds = () => {
+    const container = getTimelineContainer()
+    if (!container) return null
+    return container.getBoundingClientRect()
+  }
 
-    popupPosition.left = Math.max(8, Math.min(x + gap, maxLeft))
-    popupPosition.top = Math.max(8, Math.min(y + gap, maxTop))
+  const clampToBounds = (
+    left: number,
+    top: number,
+    popupWidth: number,
+    popupHeight: number,
+  ) => {
+    const containerRect = getContainerBounds()
+    const viewportMinLeft = 8
+    const viewportMinTop = 8
+    const viewportMaxLeft = window.innerWidth - popupWidth - 8
+    const viewportMaxTop = window.innerHeight - popupHeight - 8
+
+    const minLeft = containerRect
+      ? Math.max(viewportMinLeft, containerRect.left + 8)
+      : viewportMinLeft
+    const maxLeft = containerRect
+      ? Math.min(viewportMaxLeft, containerRect.right - popupWidth - 8)
+      : viewportMaxLeft
+
+    const minTop = containerRect
+      ? Math.max(viewportMinTop, containerRect.top + 8)
+      : viewportMinTop
+    const maxTop = containerRect
+      ? Math.min(viewportMaxTop, containerRect.bottom - popupHeight - 8)
+      : viewportMaxTop
+
+    const clampedLeft = maxLeft < minLeft ? minLeft : Math.max(minLeft, Math.min(left, maxLeft))
+    const clampedTop = maxTop < minTop ? minTop : Math.max(minTop, Math.min(top, maxTop))
+
+    return { left: clampedLeft, top: clampedTop }
+  }
+
+  const movePopupPosition = (x: number, y: number, popupWidth = 320, popupHeight = 220) => {
+    const gap = 12
+    const next = clampToBounds(x + gap, y + gap, popupWidth, popupHeight)
+    popupPosition.left = next.left
+    popupPosition.top = next.top
   }
 
   const moveObjectPosition = (
@@ -77,61 +113,87 @@ export const useTimelineHoverPopup = ({
     objectRect: Pick<DOMRect, 'height' | 'width'>,
     verticalGapSize = 0,
   ) => {
-    const windowWidth = window.innerWidth
-    const windowHeight = window.innerHeight
+    let top = basePoint.bottom + verticalGapSize
+    const left = basePoint.left
 
-    let top = basePoint.bottom + window.scrollY + verticalGapSize
-    let left = basePoint.left + window.scrollX
-
-    if (top + objectRect.height > window.scrollY + windowHeight) {
-      top = basePoint.top + window.scrollY - objectRect.height - verticalGapSize
+    if (top + objectRect.height > window.innerHeight) {
+      top = basePoint.top - objectRect.height - verticalGapSize
     }
 
-    if (left + objectRect.width > window.scrollX + windowWidth) {
-      left -= left + objectRect.width - (window.scrollX + windowWidth)
-      if (left < 1) left = 1
-    }
-
-    return { top, left }
+    return clampToBounds(left, top, objectRect.width, objectRect.height)
   }
 
   const getPopupElement = () => document.querySelector('.item-hover-popup') as HTMLElement | null
+
+  const getEventClientPoint = (event: MouseEvent) => {
+    const x = Number.isFinite(event.clientX)
+      ? event.clientX
+      : Number.isFinite(event.pageX)
+        ? event.pageX - window.scrollX
+        : lastPointer.x
+
+    const y = Number.isFinite(event.clientY)
+      ? event.clientY
+      : Number.isFinite(event.pageY)
+        ? event.pageY - window.scrollY
+        : lastPointer.y
+
+    return { x, y }
+  }
+
+  const placePopupNearItem = (itemId: string | number) => {
+    const timeline = getTimeline() as TimelineLike | null
+    const timelineItem = timeline?.itemSet?.items?.[String(itemId)]
+    const popupEl = getPopupElement()
+
+    if (!timelineItem?.dom?.content || !popupEl) return false
+
+    const itemRect = timelineItem.dom.content.getBoundingClientRect()
+    const anchor: TimelinePositionAnchor = {
+      top: itemRect.top,
+      bottom: itemRect.bottom,
+      left: itemRect.left,
+    }
+
+    const centerPanel = getTimelineContainer()?.querySelector('.vis-panel.vis-center')
+    if (centerPanel) {
+      const centerRect = centerPanel.getBoundingClientRect()
+      if (anchor.left < centerRect.left) {
+        anchor.left = centerRect.left
+      }
+    }
+
+    const popupRect = popupEl.getBoundingClientRect()
+    const position = moveObjectPosition(anchor, popupRect, itemMargin)
+    popupPosition.top = position.top
+    popupPosition.left = position.left
+    return true
+  }
 
   const showPopupFromEvent = async (itemId: string | number, event: MouseEvent, pinned = false) => {
     const targetItem = getPopupItemById(itemId)
     if (!targetItem) return
 
+    const pointer = getEventClientPoint(event)
+    lastPointer.x = pointer.x
+    lastPointer.y = pointer.y
+
     popupItem.value = targetItem
+    activeItemId.value = itemId
     popupState.show = true
     popupState.pinned = pinned
     await nextTick()
 
-    const timeline = getTimeline() as TimelineLike | null
-    const timelineItem = timeline?.itemSet?.items?.[String(itemId)]
-    const popupEl = getPopupElement()
+    if (!placePopupNearItem(itemId)) {
+      movePopupPosition(pointer.x, pointer.y)
+    }
+  }
 
-    if (timelineItem?.dom?.content && popupEl) {
-      const itemRect = timelineItem.dom.content.getBoundingClientRect()
-      const anchor: TimelinePositionAnchor = {
-        top: itemRect.top,
-        bottom: itemRect.bottom,
-        left: itemRect.left,
-      }
+  const handleTimelineViewportChange = () => {
+    if (!popupState.show || !activeItemId.value) return
 
-      const centerPanel = getTimelineContainer()?.querySelector('.vis-panel.vis-center')
-      if (centerPanel) {
-        const centerRect = centerPanel.getBoundingClientRect()
-        if (anchor.left < centerRect.left) {
-          anchor.left = centerRect.left
-        }
-      }
-
-      const popupRect = popupEl.getBoundingClientRect()
-      const position = moveObjectPosition(anchor, popupRect, itemMargin)
-      popupPosition.top = position.top
-      popupPosition.left = position.left
-    } else {
-      movePopupPosition(event.pageX, event.pageY)
+    if (!placePopupNearItem(activeItemId.value)) {
+      movePopupPosition(lastPointer.x, lastPointer.y)
     }
   }
 
@@ -142,6 +204,7 @@ export const useTimelineHoverPopup = ({
     popupState.show = false
     popupState.pinned = false
     popupItem.value = null
+    activeItemId.value = null
   }
 
   const onPopupEnter = () => {
@@ -223,6 +286,7 @@ export const useTimelineHoverPopup = ({
     handleTimelineItemOver,
     handleTimelineItemOut,
     handleTimelineClick,
+    handleTimelineViewportChange,
     attachGlobalListeners,
     detachGlobalListeners,
   }

@@ -111,6 +111,7 @@ const {
   handleTimelineItemOver,
   handleTimelineItemOut,
   handleTimelineClick,
+  handleTimelineViewportChange,
   attachGlobalListeners,
   detachGlobalListeners,
 } = useTimelineHoverPopup({
@@ -233,6 +234,9 @@ onMounted(async () => {
   timelineInstance.on('itemover', handleTimelineItemOver)
   timelineInstance.on('itemout', handleTimelineItemOut)
   timelineInstance.on('click', handleTimelineClick)
+  timelineInstance.on('rangechange', handleTimelineViewportChange)
+  timelineInstance.on('rangechanged', handleTimelineViewportChange)
+  timelineInstance.on('changed', handleTimelineViewportChange)
 
   // 6. 팝업 전역 리스너(document click 등) 등록
   attachGlobalListeners()
