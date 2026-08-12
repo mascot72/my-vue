@@ -451,4 +451,9 @@ defineExpose({
 /* ── 잠금 상태 ── */
 :deep(.vis-item .vis-item-tags.lock)   { background: rgba(239, 68,  68, 0.08); }
 :deep(.vis-item .vis-item-tags.unlock) { background: rgba(34,  197, 94, 0.06); }
+
+/* vis-timeline 중앙 스크롤 영역 하단에 충분한 여백 확보 */
+:deep(.vis-timeline .vis-panel.vis-center .vis-content) {
+  padding-bottom: 300px !important; /* 하위 기술들이 펼쳐졌을 때 최대 높이만큼 넉넉하게 지정 */
+}
 </style>
