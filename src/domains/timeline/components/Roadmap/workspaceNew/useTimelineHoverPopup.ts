@@ -228,7 +228,7 @@ export const useTimelineHoverPopup = ({
     if (!eventProps.item) return
 
     clearHidePopupTimer()
-    showPopupFromEvent(eventProps.item, eventProps.event, false)
+    // showPopupFromEvent(eventProps.item, eventProps.event, false)
   }
 
   const handleTimelineItemOut = () => {
@@ -243,6 +243,11 @@ export const useTimelineHoverPopup = ({
   }
 
   const handleTimelineClick = (eventProps: TimelineClickEvent) => {
+    const target = eventProps.event.target as HTMLElement
+    if (target?.closest('.vis-item-add') || target?.closest('.vis-item-comment')) {
+      closePopup(true)
+      return
+    }
     if (eventProps.what !== 'item' || !eventProps.item) {
       closePopup(true)
       return
