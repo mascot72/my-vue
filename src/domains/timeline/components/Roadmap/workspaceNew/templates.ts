@@ -39,6 +39,7 @@ export const itemTemplate = (
   data: TemplateRecord,
   timelineState: { activeArrowItemIds: string[] },
 ) => {
+  const DEFAULT_NO_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='40'><rect width='100%' height='100%' fill='%23eeeeee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999999' font-size='10'>No Image</text></svg>"
   /** 작성 상태에 따른 아이콘 클래스 (lock/unlock) */
   const writingClass =
     data.writingStatus === 'code001' ? 'lock' : data.writingStatus === 'code002' ? 'unlock' : ''
@@ -64,14 +65,14 @@ export const itemTemplate = (
    */
   let imageWrapHtml = ''
   if (data.ptrmType === 'PRM') {
-    const imgSrc = `https://dev-dxplm-ext.hlmando.com/fms/rest/v1/file/thumbnail?ownerId=${data.id}&sectionType=-&ownerDelegateClass=${DELEGATE_CLASS}&createDate=${data.updateDate}`
+    const imgSrc = `/fms/rest/v1/file/thumbnail?ownerId=${data.id}&sectionType=-&ownerDelegateClass=${DELEGATE_CLASS}&createDate=${data.updateDate}`
     const addButtonHtml = data.hasTrm
       ? `<div class="vis-item-add ${isActive ? 'active' : ''}" data-action="add-item" data-id="${data.id}">${isActive ? '-' : '+'}</div>`
       : ''
 
     imageWrapHtml = `
       <div class="vis-item-imgwrap">
-        <img class="vis-item-img" src="${imgSrc}" loading="lazy" />
+        <img class="vis-item-img" src="${imgSrc}" loading="lazy" onerror="this.onerror=null; this.src='${DEFAULT_NO_IMAGE}';" />
         ${addButtonHtml}
       </div>`
   }

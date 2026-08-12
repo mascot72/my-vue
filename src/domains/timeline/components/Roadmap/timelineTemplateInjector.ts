@@ -97,6 +97,8 @@ export function buildGroupTemplateHtml({
   `
 }
 
+const DEFAULT_NO_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='40'><rect width='100%' height='100%' fill='%23eeeeee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999999' font-size='10'>No Image</text></svg>"
+
 export function buildItemTemplateHtml({
   data,
   activeArrowItemIds,
@@ -128,16 +130,15 @@ export function buildItemTemplateHtml({
           <div class="vis-item-title">${title}</div>
           <div class="vis-item-tech">${escapeHtml(data.titleEn)}</div>
         </div>
-        ${
-          isPrm
-            ? `
+        ${isPrm
+      ? `
           <div class="vis-item-imgwrap">
-            <img class="vis-item-img" src="${thumbnailUrl}" />
-            ${data.hasTrm ? `<div class="vis-item-add ${isActive ? 'active' : ''}" data-item-id="${escapeHtml(data.id)}">${isActive ? '-' : '+'}</div>` : ''}
+            <img class="vis-item-img" src="${thumbnailUrl}" onerror="this.onerror=null; this.src='${DEFAULT_NO_IMAGE}';" />
+            ${data.hasTrm ? `<div class="vis-item-add${isActive ? ' active' : ''}" data-action="add-item" data-id="${escapeHtml(data.id)}" title="${isActive ? '접기' : '펼치기'}">${isActive ? '-' : '+'}</div>` : ''}
           </div>
         `
-            : ''
-        }
+      : ''
+    }
       </div>
     </div>
   `
