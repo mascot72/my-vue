@@ -422,11 +422,11 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     const id = String(itemId)
     if (visible) {
       timelineInstance?.setOptions({
-        stack: true,
+        // stack: true,
         // stackSubgroups: true,
         margin: {
-          item: 16, // 인접 카드 및 화살표 간섭 방지 여유 공간
-          axis: 20,
+          item: 1, // 인접 카드 및 화살표 간섭 방지 여유 공간
+          // axis: 20,
         },
       })
 
@@ -443,10 +443,10 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     timelineState.activeArrowItemIds = timelineState.activeArrowItemIds.filter((value) => value !== id)
     removeSubItems(id)
     timelineInstance?.setOptions({
-      stack: true,
-      stackSubgroups: false,
+      // stack: true,
+      // stackSubgroups: false,
       margin: {
-        item: 0,
+        item: 1,
         axis: 0,
       },
     })
@@ -499,7 +499,7 @@ export function useTimeline(props: any, emit: any, store: any, getDdName: any) {
     await nextTick()
     if (!timelineInstance) return
     timelineInstance.setSelection([itemId])
-    timelineInstance.focus(itemId, { animation: true })
+    timelineInstance.focus(itemId, { zoom: false })
   }
 
   /**
