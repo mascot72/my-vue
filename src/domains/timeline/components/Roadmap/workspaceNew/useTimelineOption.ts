@@ -50,8 +50,6 @@ export default function useTimelineOption({ itemMargin, options, viewMode }: Tim
     orientation: 'top',
     horizontalScroll: true,
     verticalScroll: true,
-    stack: true,
-    stackSubgroups: true,
     zoomKey: 'ctrlKey',
     margin: { item: itemMargin },
     // locale: 'ko',
@@ -73,7 +71,7 @@ export default function useTimelineOption({ itemMargin, options, viewMode }: Tim
       item.content = prompt('Edit items text:', item.content as string) || item.content
       callback(item)
     },
-    editable: true,
+    // editable: true,
   }
 
   const makeTimelineOptions = (viewType: 'MONTH' | 'QUARTER') => {
